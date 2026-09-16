@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Flashcard Design</title>
+    <style>
+        :root {
+            --primary: #155b96;
+            --primary-hover: #0d4474;
+            --bg-gray: #f8f9fa;
+            --border: #e5e7eb;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --warning-bg: #fef3c7;
+            --warning-border: #f59e0b;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        body { display: flex; height: 100vh; background-color: #ffffff; color: var(--text-main); }
+
+        /* Sidebar mô phỏng hình ảnh */
+        .sidebar { width: 280px; background-color: var(--bg-gray); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+        .sidebar-header { padding: 16px; font-weight: bold; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text-muted); }
+        .menu-item { padding: 12px 16px; font-size: 14px; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .menu-item:hover { background-color: #eef2f6; }
+        .menu-item.active { background-color: #eef2f6; border-left: 3px solid var(--primary); font-weight: 600; color: var(--primary); }
+        
+        /* Main Content */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        .topbar { padding: 12px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+        .topbar-right { display: flex; gap: 16px; align-items: center; }
+        
+        .content-body { padding: 40px; max-width: 900px; margin: 0 auto; width: 100%; }
+        
+        /* Các State Panels */
+        .panel { display: none; }
+        .panel.active { display: block; }
+        
+        h2 { margin-bottom: 8px; color: var(--text-main); font-size: 24px;}
+        p.desc { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+        .hax-tag { font-size: 10px; background: #e0e7ff; color: #4338ca; padding: 2px 6px; border-radius: 4px; margin-left: 8px; vertical-align: middle; }
+
+        /* Form Tạo */
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 600; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; }
+        textarea.form-control { height: 100px; resize: vertical; }
+        
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        .btn-outline { background-color: white; border: 1px solid var(--border); color: var(--text-main); }
+        .btn-outline:hover { background-color: var(--bg-gray); }
+
+        /* Card List (Verify) */
+        .card-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
+        .flashcard-item { border: 1px solid var(--border); border-radius: 8px; padding: 16px; display: flex; justify-content: space-between; align-items: flex-start; background: white; }
+        .flashcard-item.warning { border-color: var(--warning-border); background-color: #fffbeb; }
+        .flashcard-content { flex: 1; }
+        .fc-front { font-weight: bold; margin-bottom: 8px; }
+        .fc-back { color: var(--text-muted); font-size: 14px; }
+        .fc-warning-text { color: #b45309; font-size: 12px; margin-top: 8px; display: flex; align-items: center; gap: 4px; font-weight: 600;}
+        .fc-actions { display: flex; gap: 8px; }
+
+        /* Flashcard Player */
+        .player-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; }
+        .big-card { width: 100%; max-width: 600px; height: 300px; perspective: 1000px; cursor: pointer; margin-bottom: 24px; }
+        .big-card-inner { width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; position: relative; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .big-card.flipped .big-card-inner { transform: rotateX(180deg); }
+        .big-card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; align-items: center; justify-content: center; font-size: 24px; padding: 32px; text-align: center; border-radius: 12px; border: 1px solid var(--border); background: white; }
+        .big-card-back { transform: rotateX(180deg); background: #f8fafc; color: var(--primary); }
+        
+        .player-controls { display: flex; gap: 16px; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .player-controls.visible { opacity: 1; pointer-events: auto; }
+        .btn-wrong { background: #fee2e2; color: #991b1b; }
+        .btn-right { background: #dcfce7; color: #166534; }
+
+        /* Empty State */
+        .empty-state { text-align: center; padding: 60px 20px; background: var(--bg-gray); border-radius: 8px; border: 1px dashed #cbd5e1;}
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            NỘI DUNG BÀI HỌC
+            <span style="float: right;">×</span>
+        </div>
+        <div style="padding: 12px 16px; font-weight: 600; font-size: 13px;">Bài 16: AI Product Design</div>
+        <div class="menu-item">1. Chuẩn bị đội ngũ</div>
+        <div class="menu-item active" onclick="switchState('setup-panel')">2. Flashcard Bài học</div>
+        <div class="menu-item" onclick="switchState('learn-panel')">🎓 Chế độ Học thử</div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="topbar">
+            <div>Bài 16 · MINI HACKATHON</div>
+            <div class="topbar-right">
+                <span style="color: var(--primary);">✨ Đặt câu hỏi với AI</span>
+                <div style="width: 30px; height: 30px; background: #e0e7ff; border-radius: 50%; text-align: center; line-height: 30px; color: var(--primary); font-weight: bold;">H</div>
+            </div>
+        </div>
+
+        <div class="content-body">
+            
+            <!-- STATE 1: SETUP (Luồng người tạo) -->
+            <div id="setup-panel" class="panel active">
+                <h2>Tạo Flashcard AI <span class="hax-tag">HAX G1</span></h2>
+                <p class="desc">AI sẽ tự động đọc nội dung bài học để trích xuất và tạo thẻ ghi nhớ. Bạn có thể định hướng nội dung tập trung và chỉnh sửa lại thẻ ở bước sau trước khi phát hành.</p>
+                
+                <div class="form-group">
+                    <label>Trọng tâm kiến thức (Tùy chọn)</label>
+                    <textarea id="prompt-input" class="form-control" placeholder="VD: Tập trung vào các thuật ngữ tiếng Anh, định nghĩa về Cost-of-error..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Số lượng thẻ tối đa</label>
+                    <input type="number" class="form-control" value="10" style="width: 150px;">
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn btn-primary" onclick="simulateAI()">✨ Tự động tạo thẻ</button>
+                    <button class="btn btn-outline" onclick="simulateFailure()">Mô phỏng Lỗi (No-grounding)</button>
+                </div>
+            </div>
+
+            <!-- STATE 2: VERIFY (Luồng người tạo xác minh) -->
+            <div id="verify-panel" class="panel">
+                <h2>Xác minh Flashcard <span class="hax-tag">Augment (Human-in-the-loop)</span></h2>
+                <p class="desc">Vui lòng kiểm tra lại các thẻ AI đã tạo. Bạn nắm quyền quyết định cuối cùng.</p>
+                
+                <div class="card-list">
+                    <!-- Happy Path Card -->
+                    <div class="flashcard-item">
+                        <div class="flashcard-content">
+                            <div class="fc-front">Cost-of-Error (Chi phí sai sót) là gì?</div>
+                            <div class="fc-back">Là mức độ thiệt hại (tài chính, tính mạng, trải nghiệm) khi hệ thống AI đưa ra kết quả sai.</div>
+                        </div>
+                        <div class="fc-actions">
+                            <button class="btn btn-outline" style="padding: 6px 12px;">✏️ Sửa <span class="hax-tag">HAX G17</span></button>
+                            <button class="btn btn-outline" style="padding: 6px 12px;">🗑️ Xóa</button>
+                        </div>
+                    </div>
+
+                    <!-- Low Confidence Card -->
+                    <div class="flashcard-item warning">
+                        <div class="flashcard-content">
+                            <div class="fc-front">Nguyên tắc HAX G11?</div>
+                            <div class="fc-back">Là làm rõ tại sao hệ thống làm điều đó.</div>
+                            <div class="fc-warning-text">⚠️ AI thiếu tự tin (Low-confidence): Thông tin trong bài khá ngắn, hãy kiểm tra lại tính chính xác. <span class="hax-tag">HAX G2</span></div>
+                        </div>
+                        <div class="fc-actions">
+                            <button class="btn btn-outline" style="padding: 6px 12px;">✏️ Sửa</button>
+                            <button class="btn btn-outline" style="padding: 6px 12px;">🗑️ Xóa</button>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="switchState('setup-panel')">Lưu bộ Flashcard</button>
+            </div>
+
+            <!-- STATE 3: FAILURE (No-grounding) -->
+            <div id="failure-panel" class="panel">
+                <div class="empty-state">
+                    <h2 style="margin-bottom: 16px;">🔍 Không tìm thấy dữ liệu phù hợp</h2>
+                    <p class="desc">AI không thể tìm thấy thông tin trong bài học khớp với yêu cầu "giải phương trình bậc 2" của bạn. Bạn vui lòng đổi yêu cầu trọng tâm phù hợp với bài học.</p>
+                    <button class="btn btn-outline" onclick="switchState('setup-panel')">Quay lại thiết lập</button>
+                </div>
+            </div>
+
+            <!-- STATE 4: LEARNER VIEW (Người học) -->
+            <div id="learn-panel" class="panel">
+                <h2>Ôn tập Flashcard</h2>
+                <p class="desc">Click vào thẻ để xem đáp án.</p>
+                
+                <div class="player-container">
+                    <div class="big-card" id="active-card" onclick="flipCard()">
+                        <div class="big-card-inner">
+                            <div class="big-card-face">Nguyên tắc HAX G1 là gì?</div>
+                            <div class="big-card-face big-card-back">Làm rõ những gì hệ thống có thể làm (Make clear what the system can do).</div>
+                        </div>
+                    </div>
+                    
+                    <div class="player-controls" id="card-controls">
+                        <button class="btn btn-wrong" onclick="nextCard(false)">❌ Trả lời sai (Quên)</button>
+                        <button class="btn btn-right" onclick="nextCard(true)">✔️ Trả lời đúng (Nhớ)</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STATE 5: LEARNER RESULTS -->
+            <div id="result-panel" class="panel">
+                <h2>Hoàn thành ôn tập!</h2>
+                <div style="padding: 24px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 24px;">
+                    <h3 style="margin-bottom: 12px;">Thống kê: Đúng 1/2 thẻ</h3>
+                    <p>Bạn đã sai ở khái niệm: <strong>Nguyên tắc HAX G1</strong></p>
+                    <div style="background: #eff6ff; padding: 12px; border-radius: 6px; margin-top: 16px;">
+                        <span class="hax-tag" style="margin-left: 0; margin-bottom: 8px; display: inline-block;">HAX G11</span>
+                        <p style="font-size: 14px; color: #1e3a8a;">💡 Dựa trên câu trả lời sai của bạn ở phần HAX G1, AI có thể sinh thêm 5 câu hỏi tình huống liên quan để bạn hiểu sâu hơn.</p>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn btn-primary" onclick="alert('Đã sinh thêm 5 câu hỏi dạng Conditional Automation!')">✨ Sinh thêm câu hỏi từ phần sai</button>
+                    <button class="btn btn-outline" onclick="switchState('learn-panel')">Học lại từ đầu</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // State Management
+        function switchState(panelId) {
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.getElementById(panelId).classList.add('active');
+            
+            // Reset player if switching to learn
+            if(panelId === 'learn-panel') {
+                document.getElementById('active-card').classList.remove('flipped');
+                document.getElementById('card-controls').classList.remove('visible');
+            }
+        }
+
+        function simulateAI() {
+            // Giả lập loading AI
+            let btn = document.querySelector('#setup-panel .btn-primary');
+            let originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ Đang phân tích bài học...";
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                switchState('verify-panel');
+            }, 1500);
+        }
+
+        function simulateFailure() {
+            let btn = document.querySelector('#setup-panel .btn-outline');
+            let originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ Đang phân tích...";
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                switchState('failure-panel');
+            }, 800);
+        }
+
+        // Flashcard Player Logic
+        function flipCard() {
+            document.getElementById('active-card').classList.toggle('flipped');
+            document.getElementById('card-controls').classList.add('visible');
+        }
+
+        function nextCard(isCorrect) {
+            // Trong Prototype, sau khi trả lời 1 thẻ thì chuyển luôn sang Result để demo luồng
+            switchState('result-panel');
+        }
+    </script>
+</body>
+</html>
