@@ -1,4 +1,4 @@
-# AI SPEC — Flashcard Tự Động Sau Buổi Học · Nhóm [XX] · Zone [X]
+# AI SPEC — Flashcard Tự Động Sau Buổi Học · Nhóm [Miniature] · Zone [5]
 Hướng: [x] A — VLearn  [ ] B — Trợ lý Học viên  [ ] C — Làn mở
 Loại: [x] Tính năng mới  [ ] Tối ưu tính năng có sẵn
 
@@ -28,13 +28,12 @@ Loại: [x] Tính năng mới  [ ] Tối ưu tính năng có sẵn
 
 - **Ứng viên ĐÃ LOẠI + vì sao:** 
   - **(2) Tóm tắt bài học:** Chỉ rút ngắn chữ, không giải quyết được nhu cầu "chủ động tự kiểm tra kiến thức" (active recall). Học viên vẫn ở trạng thái thụ động đọc lại bài.
-  - **(3) Chatbot QA:** Đòi hỏi học viên phải chủ động biết mình đang không hiểu gì để hỏi. Hơn nữa, học viên có thể chat lan man ra ngoài phạm vi bài học (dễ sinh hallucination, vi phạm rule "chỉ lấy data có trong pack").
+  - **(3) Chatbot QA:** Đòi hỏi học viên phải chủ động biết mình đang không hiểu gì để hỏi. Hơn nữa, học viên có thể chat lan man ra ngoài phạm vi bài học (dễ sinh hallucination, vi phạm rule "chỉ lấy data có trong pack"). Ngoải ra sẽ phát sinh chi phí nhiều hơn khi hỏi đáp với AI.
 - **Ứng viên CHỌN + vì sao:** **(1) Trích xuất Flashcard ôn tập tự động.** 
   - **Lý do (bằng số):** Giải quyết triệt để 100% thời gian chuẩn bị tài liệu (pain point lớn nhất). Giới hạn chặt chẽ scope của AI (chỉ tạo 10-15 thẻ từ data pack, chống hallucination hiệu quả). Cung cấp ngay một công cụ học chủ động (lật thẻ, chọn Đã nhớ/Chưa nhớ) mang lại giá trị tức thì ngay sau buổi học.
 
 ## §3. Giải pháp tương tự đã nghiên cứu
-- [Sản phẩm 1]: flow / đáng học / đáng né / mình khác gì
-- [Sản phẩm 2]: ...
+- [NotebookLM]: Học viên cần upload các tài liệu lên, AI của Google sẽ tạo các câu hỏi, flashcard tương ứng. Điểm trừ là hệ thống học liệu bị rò rỉ, không thống nhất cùng nền tảng.
 
 ## §4. Thiết kế
 - Lát cắt MỘT CÂU (1 user · 1 việc · 1 quyết định AI · 1 kết quả):
