@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
+import time
 import uuid
 from typing import Any
 
 from codebase.provider.base import ModelResponse, ToolCall
+
+logger = logging.getLogger(__name__)
 
 
 def _to_gemini_declarations(tools: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
@@ -102,16 +106,32 @@ def _function_call_id(call: Any) -> str | None:
 
 
 class GeminiProvider:
-    """Google Gemini API provider with normalized tool_calls output."""
+    """Google Gemini API provider with normalized tool_calls and built-in Fallback/Cooldown."""
 
     def __init__(
         self,
         *,
         api_key_env: str = "GEMINI_API_KEY",
         default_model: str = "gemini-3.1-flash-lite",
+        fallback_models: list[str] | None = None,
+        cooldown_seconds: int = 60,
     ) -> None:
         self.api_key_env = api_key_env
         self.default_model = default_model
+        
+        # Cấu hình Fallback
+        self.fallback_models = fallback_models or []
+        self.cooldown_seconds = cooldown_seconds
+        self._cooldowns: dict[str, float] = {}
+
+    def _is_rate_limit_error(self, exc: Exception) -> bool:
+        """Kiểm tra xem exception có phải là lỗi hết quota/rate limit không."""
+        error_str = str(exc).lower()
+        if "429" in error_str or "quota" in error_str or "exhausted" in error_str:
+            return True
+        if hasattr(exc, "code") and getattr(exc, "code") == 429:
+            return True
+        return False
 
     def complete(
         self,
@@ -122,6 +142,7 @@ class GeminiProvider:
         temperature: float = 0.0,
         tool_choice: Any | None = None,
     ) -> ModelResponse:
+        
         try:
             from google import genai
             from google.genai import types
@@ -134,6 +155,7 @@ class GeminiProvider:
 
         system_instruction, contents = _to_gemini_contents(messages)
         declarations = _to_gemini_declarations(tools)
+        
         config_kwargs: dict[str, Any] = {"temperature": temperature}
         if system_instruction:
             config_kwargs["system_instruction"] = system_instruction
@@ -141,49 +163,81 @@ class GeminiProvider:
             config_kwargs["tools"] = [types.Tool(function_declarations=declarations)]
 
         client = genai.Client(api_key=api_key)
-        resp = client.models.generate_content(
-            model=model or self.default_model,
-            contents=contents,
-            config=types.GenerateContentConfig(**config_kwargs),
-        )
 
-        text_parts: list[str] = []
-        calls: list[ToolCall] = []
+        target_model = model or self.default_model
+        models_to_try = [target_model]
+        for m in self.fallback_models:
+            if m not in models_to_try:
+                models_to_try.append(m)
 
-        def append_call(function_call: Any) -> None:
-            name = _function_call_name(function_call)
-            if name:
-                call_id = _function_call_id(function_call) or f"call_{uuid.uuid4().hex[:8]}"
-                calls.append(ToolCall(
-                    id=call_id, 
-                    name=name, 
-                    args=_function_call_args(function_call)
-                ))
+        last_exception = None
 
-        for candidate in getattr(resp, "candidates", []) or []:
-            content = getattr(candidate, "content", None)
-            for part in getattr(content, "parts", []) or []:
-                text = _part_text(part)
-                if text:
-                    text_parts.append(text)
-                function_call = _part_function_call(part)
-                if function_call:
+        for current_model in models_to_try:
+            if self._cooldowns.get(current_model, 0) > time.time():
+                continue
+
+            try:
+                resp = client.models.generate_content(
+                    model=current_model,
+                    contents=contents,
+                    config=types.GenerateContentConfig(**config_kwargs),
+                )
+
+                text_parts: list[str] = []
+                calls: list[ToolCall] = []
+
+                def append_call(function_call: Any) -> None:
+                    name = _function_call_name(function_call)
+                    if name:
+                        call_id = _function_call_id(function_call) or f"call_{uuid.uuid4().hex[:8]}"
+                        calls.append(ToolCall(
+                            id=call_id, 
+                            name=name, 
+                            args=_function_call_args(function_call)
+                        ))
+
+                for candidate in getattr(resp, "candidates", []) or []:
+                    content = getattr(candidate, "content", None)
+                    for part in getattr(content, "parts", []) or []:
+                        text = _part_text(part)
+                        if text:
+                            text_parts.append(text)
+                        function_call = _part_function_call(part)
+                        if function_call:
+                            append_call(function_call)
+
+                for function_call in getattr(resp, "function_calls", []) or []:
                     append_call(function_call)
 
-        # Some SDK versions expose function calls directly on the response.
-        for function_call in getattr(resp, "function_calls", []) or []:
-            append_call(function_call)
+                deduped_calls: list[ToolCall] = []
+                seen: set[tuple[str, str]] = set()
+                for call in calls:
+                    key = (call.name, json.dumps(call.args, ensure_ascii=False, sort_keys=True))
+                    if key not in seen:
+                        seen.add(key)
+                        deduped_calls.append(call)
 
-        deduped_calls: list[ToolCall] = []
-        seen: set[tuple[str, str]] = set()
-        for call in calls:
-            key = (call.name, json.dumps(call.args, ensure_ascii=False, sort_keys=True))
-            if key not in seen:
-                seen.add(key)
-                deduped_calls.append(call)
+                return ModelResponse(
+                    text="\n".join(part for part in text_parts if part) or None, 
+                    tool_calls=deduped_calls, 
+                    raw=resp
+                )
 
-        return ModelResponse(
-            text="\n".join(part for part in text_parts if part) or None, 
-            tool_calls=deduped_calls, 
-            raw=resp
-        )
+            except Exception as exc:
+                if self._is_rate_limit_error(exc):
+                    self._cooldowns[current_model] = time.time() + self.cooldown_seconds
+                    logger.warning(
+                        f"[Gemini Fallback] Model '{current_model}' Rate Limit/Quota. "
+                        f"Cooldown {self.cooldown_seconds}s. Trying next..."
+                    )
+                    last_exception = exc
+                    continue
+                else:
+                    raise exc
+
+        if last_exception:
+            raise RuntimeError(
+                f"Tất cả model khả dụng ({', '.join(models_to_try)}) đều báo lỗi hoặc Rate Limit."
+            ) from last_exception
+            
+        raise RuntimeError("Tất cả models đang trong thời gian Cooldown, vui lòng thử lại sau.")
