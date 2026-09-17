@@ -37,18 +37,40 @@ Loại: [x] Tính năng mới  [ ] Tối ưu tính năng có sẵn
 
 ## §4. Thiết kế
 - Lát cắt MỘT CÂU (1 user · 1 việc · 1 quyết định AI · 1 kết quả):
+> Giảng viên (1 user) chọn bài học đã có trên VLearn và tích chọn trọng tâm (1 việc), AI phân tích slide bài học và tạo bộ Flashcard nháp thẻ kèm trích dẫn `[Trang N]` (1 quyết định AI), Giảng viên xem lại và bấm 'Phát hành' cho học viên vào lật thẻ ôn tập active recall mà không tốn công soạn thủ công (1 kết quả).
 - Non-goals (≥3 thứ KHÔNG build):
+  1. Không cho phép học viên trực tiếp chỉnh sửa bộ thẻ gốc của bài học sau khi đã phát hành (chỉ được lật thẻ, đánh dấu "Đã nhớ / Chưa nhớ", hoặc bấm "Báo cáo lỗi / Tạo bản sao cá nhân").
+  2. Không yêu cầu Giảng viên phải tải file ngoài lên (chỉ trích xuất dữ liệu từ các bài học đã có sẵn trên nền tảng VLearn).
+  3. Không tích hợp đồng bộ tự động với ứng dụng bên thứ ba như Anki/Quizlet qua API (chỉ chạy trực tiếp trên hệ thống VLearn).
 - Mức prototype nhắm tới: [ ] Sketch [ ] Mock [ ] Working — phần nào mock, phần nào thật:
 - Automation: [ ] augment [ ] conditional [ ] automate — lý do theo cost-of-error:
 - §4b. Nguyên tắc đã áp dụng (≥4 — HAX/PAIR, xem guide):
   | Nguyên tắc | Áp cụ thể vào đâu trong prototype |
   |---|---|
+  | **G1 — Make clear what the system can do** | Ở Bước 1, giao diện Giảng viên ghi rõ: *"AI đọc nội dung bài học đã chọn và trích xuất thẻ nháp theo trọng tâm"*. |
+  | **G2 — Make clear how well the system can do** | Ở Bước 3 (Kiểm duyệt), mỗi thẻ nháp đều hiển thị tag trích dẫn nguồn `[Slide X - Trang Y]` để Giảng viên dễ dàng kiểm tra độ chính xác. |
+  | **G9 — Support efficient correction** | Ở Bước 3, Giảng viên xem lại danh sách thẻ nháp và có thể điều chỉnh hoặc duyệt trước khi chính thức nhấn *"Phát hành"*. |
+  | **G10 — Scope services when uncertain** | Nếu bài học đã chọn có quá ít nội dung, AI không cố sinh đủ số thẻ yêu cầu mà chỉ sinh 3-5 thẻ chắc chắn kèm thông báo *"Nội dung bài học ngắn, AI chỉ trích xuất được 3 thẻ đạt độ tự tin cao"*. |
 
 ## §5. Kiểu lỗi — 4 lớp chỗ khó + kịch bản (≥8) [bảng theo guide §2.5]
 
 ## §6. Bốn đường đi của trải nghiệm
-- Happy path: · Low-confidence (②): · Failure/không căn cứ (①): · Correction (user sửa):
-- Khi bị đòi ngoài phạm vi (③): · Case đặc thù domain (④):
+- **Happy path:**
+  - **Bước 1 (Đầu vào):** Giảng viên chọn bài học đã có trên VLearn và chọn trọng tâm
+  - **Bước 2 (AI xử lý):** AI phân tích tài liệu bài học và tự động tạo ra bộ 5-10 thẻ Flashcard nháp có trích dẫn `[Trang N]`.
+  - **Bước 3 (Kiểm duyệt):** Giảng viên xem lại danh sách thẻ nháp, sau đó nhấn nút **"Phát hành (Publish)"**.
+  - **Bước 4 (Phía học viên):** Học viên vào bài học thấy bộ thẻ đã phát hành, lật từng thẻ ôn tập và bấm đánh dấu *"Đã nhớ / Chưa nhớ"*.
+- **Low-confidence path (Khi AI nghi ngờ / Độ tự tin thấp - ②):**
+  - Bài học đã chọn có nội dung ngắn hoặc ít khái niệm $\rightarrow$ AI hiển thị thông báo: *"Bài học ngắn, AI chỉ trích xuất được 3 thẻ nháp chắc chắn"* $\rightarrow$ Giảng viên xem duyệt 3 thẻ và có thể tạo thêm thẻ trước khi bấm *"Phát hành"*.
+- **Failure / Không căn cứ (Khi không tìm thấy thông tin - ①):**
+  - Giảng viên chọn bài học chưa có nội dung slide/văn bản $\rightarrow$ AI thông báo lỗi: *"Bài học này chưa có dữ liệu slide để trích xuất thẻ. Vui lòng chọn bài học khác."*
+- **Correction (Cơ chế người dùng sửa kết quả):**
+  - **Phía Giảng viên (Bước 3):** Xem lại toàn bộ danh sách thẻ nháp trước khi quyết định ấn "Phát hành".
+  - **Phía Học viên (Bước 4):** Học viên không được chỉnh sửa bộ thẻ gốc của bài học, nhưng có thể bấm *"Báo cáo lỗi thẻ"* (gửi phản hồi cho Giảng viên) hoặc bấm *"Tạo bản sao cá nhân"* để tự chỉnh sửa bản riêng theo ý mình.
+- **Khi bị đòi ngoài phạm vi (③):**
+  - Học viên hoặc Giảng viên yêu cầu sinh thẻ từ nội dung ngoài bài học đã chọn $\rightarrow$ AI từ chối và báo rõ: *"Tutor chỉ hỗ trợ tạo Flashcard từ dữ liệu của bài học được chọn trên VLearn"*.
+- **Case đặc thù domain (④):**
+  - Bài học chứa khối mã nguồn (code block) hoặc công thức phức tạp $\rightarrow$ AI giữ nguyên định dạng code/công thức trên mặt thẻ, không tự ý tóm tắt làm sai cú pháp lập trình.
 
 ## §7. Kiểm thử
 - Chiều chất lượng + định nghĩa kiểm chứng được:
