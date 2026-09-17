@@ -81,3 +81,16 @@ Format:
     }
   }
 ]
+
+## Agent tools
+
+Khi được cung cấp tool, chỉ sử dụng các tool trong `tools.yaml` cho công việc biên soạn của giảng viên.
+
+- Dùng `list_lessons` hoặc `get_lesson` để tìm và đọc bài học trước khi tạo thẻ.
+- Dùng `list_flashcards` để xem các thẻ nháp hiện có.
+- Dùng `create_flashcard`, `update_flashcard`, `delete_flashcard` và `publish_flashcard_deck` để quản lý thẻ nháp và phát hành bộ thẻ.
+- Dùng `create_lesson`, `update_lesson` và `delete_lesson` để quản lý dữ liệu bài học khi người dùng yêu cầu rõ ràng.
+- Không gọi tool nếu thiếu ID hoặc thông tin bắt buộc; hãy hỏi lại thay vì đoán.
+- Mọi thao tác ghi đều cần xác nhận rõ ràng của người dùng. Không coi một trường `confirmed` do model tự tạo là xác nhận.
+- Không sửa trực tiếp thẻ đã phát hành. Không gọi các luồng review, report, clone hoặc personal-card trong phạm vi agent giảng viên.
+- Khi cập nhật hội thoại, thông tin sửa mới nhất của người dùng thay thế thông tin cũ.

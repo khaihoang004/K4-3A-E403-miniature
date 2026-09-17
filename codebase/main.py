@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from dotenv import load_dotenv
 from codebase.provider.gemini_provider import GeminiProvider
+from codebase.agent_tools import ToolRegistry, load_tool_schemas
 
 load_dotenv()
 
@@ -29,12 +30,14 @@ gemini = GeminiProvider(fallback_models=["gemini-3.1-flash-lite"])
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 PROMPT_FILE = BASE_DIR / "codebase" / "artifact" / "system_prompt.md"
+TOOLS_FILE = BASE_DIR / "codebase" / "artifact" / "tools.yaml"
 DATA_DIR = BASE_DIR / "data"
 
 PUBLISHED_FILE = DATA_DIR / "published_decks.json"
 PERSONAL_FILE = DATA_DIR / "personal_decks.json"
 LOG_FILE = DATA_DIR / "learning_logs.json"
 REPORT_FILE = DATA_DIR / "reports.json"
+agent_tools = ToolRegistry(BASE_DIR)
 
 
 class Source(BaseModel):
@@ -60,6 +63,19 @@ class GenerateResponse(BaseModel):
     data: list[Flashcard]
     warning: str | None = None
     message: str | None = None
+
+
+class AgentRequest(BaseModel):
+    query: str = Field(..., min_length=1)
+    history: list[dict[str, str]] = []
+    confirmed: bool = False
+
+
+class AgentResponse(BaseModel):
+    success: bool
+    message: str | None = None
+    tool_calls: list[dict] = []
+    pending_confirmation: list[dict] = []
 
 
 class PublishRequest(BaseModel):
@@ -160,6 +176,56 @@ def parse_flashcards(text: str):
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.post("/api/agent", response_model=AgentResponse)
+def run_agent(req: AgentRequest):
+    try:
+        tools = load_tool_schemas(TOOLS_FILE)
+        messages = [{"role": "system", "content": load_system_prompt()}]
+        messages.extend(req.history)
+        messages.append({"role": "user", "content": req.query})
+        trace = []
+        pending = []
+
+        for _ in range(4):
+            response = gemini.complete(messages=messages, tools=tools, temperature=0.1)
+            if not response.tool_calls:
+                return AgentResponse(
+                    success=True,
+                    message=response.text or "Đã xử lý yêu cầu.",
+                    tool_calls=trace,
+                    pending_confirmation=pending,
+                )
+
+            tool_results = []
+            for call in response.tool_calls:
+                result = agent_tools.execute(call.name, call.args, confirmed=req.confirmed)
+                trace.append({"id": call.id, "name": call.name, "args": call.args, "result": result})
+                if result.get("pending_confirmation"):
+                    pending.append({"name": call.name, "args": call.args})
+                tool_results.append({"tool_call_id": call.id, "name": call.name, "result": result})
+
+            if pending:
+                return AgentResponse(
+                    success=True,
+                    message="Cần xác nhận trước khi thực hiện thao tác ghi.",
+                    tool_calls=trace,
+                    pending_confirmation=pending,
+                )
+
+            messages.append({
+                "role": "tool",
+                "name": "agent_tools",
+                "content": json.dumps(tool_results, ensure_ascii=False),
+            })
+
+        raise HTTPException(status_code=502, detail="Agent vượt quá số vòng gọi tool cho phép.")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Agent execution failed")
+        raise HTTPException(status_code=500, detail=f"{type(exc).__name__}: {exc}") from exc
 
 
 @app.post("/api/generate_flashcards", response_model=GenerateResponse)
