@@ -1,0 +1,38 @@
+[
+  {
+    "run_id": 1,
+    "timestamp": "2026-09-17 15:55:26",
+    "total": 20,
+    "pass_count": 15,
+    "fail_count": 5,
+    "pass_rate": 75.0,
+    "note": "Lượt chạy thứ 1"
+  },
+  {
+    "run_id": 2,
+    "timestamp": "2026-09-17 16:58:02",
+    "total": 20,
+    "pass_count": 18,
+    "fail_count": 2,
+    "pass_rate": 90.0,
+    "note": "Lượt chạy thứ 2"
+  },
+  {
+    "run_id": 3,
+    "timestamp": "2026-09-17 18:40:03",
+    "total": 20,
+    "pass_count": 18,
+    "fail_count": 2,
+    "pass_rate": 90.0,
+    "note": "Lượt chạy thứ 3"
+  },
+  {
+    "run_id": 4,
+    "timestamp": "2026-09-17 18:46:02",
+    "total": 20,
+    "pass_count": 18,
+    "fail_count": 2,
+    "pass_rate": 90.0,
+    "note": "Lượt chạy thứ 4"
+  }
+]
