@@ -41,14 +41,19 @@ def _to_gemini_contents(messages: list[dict[str, str]]) -> tuple[str | None, lis
                 parsed_content = json.loads(content)
             except json.JSONDecodeError:
                 parsed_content = {"result": content}
+            
+            function_response_payload: dict[str, Any] = {
+                "name": name,
+                "response": parsed_content
+            }
+            
+            if tool_call_id:
+                function_response_payload["id"] = tool_call_id
                 
             contents.append({
                 "role": "user",
                 "parts": [{
-                    "functionResponse": {
-                        "name": name,
-                        "response": parsed_content
-                    }
+                    "functionResponse": function_response_payload
                 }]
             })
             
@@ -85,6 +90,15 @@ def _function_call_args(call: Any) -> dict[str, Any]:
     if isinstance(call, dict):
         return dict(call.get("args") or {})
     return {}
+
+
+def _function_call_id(call: Any) -> str | None:
+    """Helper mới để lấy ID thật từ Gemini nếu có."""
+    if hasattr(call, "id"):
+        return getattr(call, "id")
+    if isinstance(call, dict):
+        return call.get("id")
+    return None
 
 
 class GeminiProvider:
@@ -139,7 +153,7 @@ class GeminiProvider:
         def append_call(function_call: Any) -> None:
             name = _function_call_name(function_call)
             if name:
-                call_id = f"call_{uuid.uuid4().hex[:8]}"
+                call_id = _function_call_id(function_call) or f"call_{uuid.uuid4().hex[:8]}"
                 calls.append(ToolCall(
                     id=call_id, 
                     name=name, 
