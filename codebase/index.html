@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VLearn Flashcard</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;max-width:1000px;margin:0 auto;padding:24px;background:#f8fafc;color:#1e293b}
+h1{margin-bottom:20px}
+button{border:0;border-radius:7px;padding:10px 16px;background:#2563eb;color:white;font-weight:600;cursor:pointer}
+button:hover{opacity:.9}
+button:disabled{background:#94a3b8;cursor:not-allowed}
+.secondary{background:#64748b}
+.success{background:#16a34a}
+.danger{background:#dc2626}
+.warning{background:#d97706}
+.mode{display:flex;gap:8px;margin-bottom:20px}
+.mode button.active{background:#111827}
+.panel{background:white;border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin-bottom:20px}
+textarea,input,select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:6px;font:inherit}
+.lesson{height:220px;font-family:monospace}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.alert{padding:12px;border-radius:7px;margin:12px 0}
+.alert.success{color:white}
+.alert.warning{background:#fef3c7;color:#92400e}
+.alert.error{background:#fee2e2;color:#991b1b}
+.card{background:white;border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin-bottom:15px}
+.card-header{display:flex;justify-content:space-between;margin-bottom:12px}
+.label{font-size:13px;font-weight:700;color:#64748b;margin:8px 0 5px}
+.answer{margin-top:10px}
+.source{margin-top:14px;background:#f1f5f9;padding:12px;border-radius:7px;font-size:14px}
+.page{font-weight:700;color:#475569;margin-bottom:6px}
+.study{min-height:320px;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer}
+.study-inner{width:100%}
+.study-question{font-size:26px;font-weight:700;margin:30px 0}
+.study-answer{font-size:18px;line-height:1.6}
+.hidden{display:none}
+.progress{margin:10px 0;color:#64748b}
+.deck-item{padding:14px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:10px}
+.report-form{margin-top:15px}
+small{color:#64748b}
+pre{background:#1e293b;color:#e2e8f0;padding:12px;border-radius:6px;overflow:auto}
+</style>
+</head>
+
+<body>
+
+<h1>VLearn Flashcard</h1>
+
+<div class="mode">
+<button id="instructorMode" class="active" onclick="setMode('instructor')">Instructor</button>
+<button id="studentMode" onclick="setMode('student')">Student</button>
+</div>
+
+<div id="notification"></div>
+
+<section id="instructorView">
+
+<div class="panel">
+<h2>1. Tạo Flashcard</h2>
+
+<label class="label">Lesson ID</label>
+<input id="lessonId" value="demo-lesson">
+
+<label class="label">Trọng tâm</label>
+<input id="focus" value="Python variables, Python loops">
+
+<label class="label">Nội dung bài học</label>
+<textarea id="lessonContent" class="lesson">[Trang 1]
+
+<div class="panel">
+    <h2>Student Reports</h2>
+
+    <button
+        class="secondary"
+        onclick="loadReports()">
+        Tải báo cáo
+    </button>
+
+    <div id="reports"></div>
+</div>
+
+Biến trong Python được tạo ra khi bạn gán một giá trị cho nó. Không cần khai báo kiểu dữ liệu.
+
+[Trang 2]
+
+Vòng lặp for trong Python dùng để lặp qua một chuỗi (như list, tuple, dictionary, set, hoặc string).
+
+Ví dụ:
+
+```python
+fruits = ["apple", "banana", "cherry"]
+
+for x in fruits:
+    print(x)
+```</textarea>
+
+<div class="toolbar">
+<button id="generateBtn" onclick="generateCards()">Tạo Flashcard bằng AI</button>
+</div>
+</div>
+
+<div class="panel">
+<h2>2. Kiểm duyệt</h2>
+<div id="cardStatus"></div>
+<div id="cards"></div>
+
+<div id="publishArea" class="hidden">
+<div class="toolbar">
+<button class="secondary" onclick="addCard()">+ Thêm thẻ</button>
+<button class="success" onclick="publishCards()">Phát hành Flashcard</button>
+</div>
+</div>
+</div>
+
+</section>
+
+
+<section id="studentView" class="hidden">
+
+<div class="panel">
+<h2>Student</h2>
+
+<label class="label">Student ID</label>
+<input id="studentId" value="student-demo">
+
+<div class="toolbar">
+<button onclick="loadDecks()">Tải Flashcard đã phát hành</button>
+<button class="secondary" onclick="loadProgress()">Xem tiến độ</button>
+</div>
+
+<div id="studentContent"></div>
+
+<div id="personalContent"></div>
+</div>
+
+</section>
+
+
+<script>
+const API="http://localhost:8000";
+let flashcards=[];
+let currentDeck=null;
+let currentIndex=0;
+let flipped=false;
+
+function notify(message,type="error"){
+    document.getElementById("notification").innerHTML=
+        `<div class="alert ${type}">${escapeHtml(message)}</div>`;
+}
+
+function escapeHtml(value){
+    const div=document.createElement("div");
+    div.textContent=value??"";
+    return div.innerHTML;
+}
+
+function setMode(mode){
+    const instructor=document.getElementById("instructorView");
+    const student=document.getElementById("studentView");
+
+    instructor.classList.toggle("hidden",mode!=="instructor");
+    student.classList.toggle("hidden",mode!=="student");
+
+    document.getElementById("instructorMode").classList.toggle("active",mode==="instructor");
+    document.getElementById("studentMode").classList.toggle("active",mode==="student");
+
+    document.getElementById("notification").innerHTML="";
+}
+
+async function generateCards(){
+    const btn=document.getElementById("generateBtn");
+    const content=document.getElementById("lessonContent").value.trim();
+    const lessonId=document.getElementById("lessonId").value.trim();
+    const focus=document.getElementById("focus").value
+        .split(",").map(x=>x.trim()).filter(Boolean);
+
+    if(!content){
+        notify("Bài học chưa có dữ liệu.");
+        return;
+    }
+
+    btn.disabled=true;
+    btn.textContent="AI đang xử lý...";
+
+    try{
+        const response=await fetch(`${API}/api/generate_flashcards`,{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({
+                content,
+                lesson_id:lessonId,
+                focus
+            })
+        });
+
+        const result=await response.json();
+
+        if(!response.ok)
+            throw new Error(result.detail||"Generate thất bại.");
+
+        if(!result.success){
+            notify(result.message||"Không tạo được flashcard.");
+            return;
+        }
+
+        flashcards=result.data||[];
+        renderCards();
+
+        if(result.warning)
+            notify(result.warning,"warning");
+        else
+            notify(`Đã tạo ${flashcards.length} flashcard.`,"success");
+
+    }catch(error){
+        notify(error.message);
+    }finally{
+        btn.disabled=false;
+        btn.textContent="Tạo Flashcard bằng AI";
+    }
+}
+
+function renderCards(){
+    const container=document.getElementById("cards");
+    const publishArea=document.getElementById("publishArea");
+
+    container.innerHTML="";
+
+    if(!flashcards.length){
+        publishArea.classList.add("hidden");
+        return;
+    }
+
+    publishArea.classList.remove("hidden");
+
+    document.getElementById("cardStatus").textContent=
+        `${flashcards.length} flashcard đang ở trạng thái Draft.`;
+
+    flashcards.forEach((card,index)=>{
+        const el=document.createElement("div");
+        el.className="card";
+
+        el.innerHTML=`
+            <div class="card-header">
+                <strong>Flashcard #${index+1}</strong>
+                <button class="danger" onclick="deleteCard(${index})">Xóa</button>
+            </div>
+
+            <div class="label">Câu hỏi</div>
+            <input value="${escapeHtml(card.question)}"
+                onchange="flashcards[${index}].question=this.value">
+
+            <div class="label">Câu trả lời</div>
+            <textarea rows="6"
+                onchange="flashcards[${index}].answer=this.value">${escapeHtml(card.answer)}</textarea>
+
+            <div class="source">
+                <div class="page">📖 Trang ${card.source.page}</div>
+                <div>${escapeHtml(card.source.text)}</div>
+            </div>
+        `;
+
+        container.appendChild(el);
+    });
+}
+
+function addCard(){
+    flashcards.push({
+        id:null,
+        question:"",
+        answer:"",
+        source:{
+            page:1,
+            text:""
+        }
+    });
+
+    renderCards();
+
+    window.scrollTo({
+        top:document.body.scrollHeight,
+        behavior:"smooth"
+    });
+}
+
+function deleteCard(index){
+    flashcards.splice(index,1);
+    renderCards();
+}
+
+async function publishCards(){
+    if(!flashcards.length){
+        notify("Không có flashcard để phát hành.");
+        return;
+    }
+
+    for(let i=0;i<flashcards.length;i++){
+        const card=flashcards[i];
+
+        if(!card.question.trim())
+            return notify(`Flashcard #${i+1} chưa có câu hỏi.`);
+
+        if(!card.answer.trim())
+            return notify(`Flashcard #${i+1} chưa có câu trả lời.`);
+
+        if(!card.source?.text.trim())
+            return notify(`Flashcard #${i+1} chưa có source.`);
+    }
+
+    try{
+        const response=await fetch(`${API}/api/publish_flashcards`,{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({
+                lesson_id:document.getElementById("lessonId").value,
+                title:"Flashcard - "+document.getElementById("lessonId").value,
+                flashcards
+            })
+        });
+
+        const result=await response.json();
+
+        if(!response.ok)
+            throw new Error(result.detail||"Publish thất bại.");
+
+        notify(result.message,"success");
+
+        currentDeck=result.deck;
+
+    }catch(error){
+        notify(error.message);
+    }
+}
+
+async function loadDecks(){
+    const container=document.getElementById("studentContent");
+
+    try{
+        const response=await fetch(`${API}/api/decks`);
+        const result=await response.json();
+
+        container.innerHTML=`
+            <h3>Flashcard đã phát hành</h3>
+            <div id="publicDecks"></div>
+        `;
+
+        if(!result.data.length){
+            container.innerHTML+="<p>Chưa có deck nào.</p>";
+            return;
+        }
+
+        const publicDecks=document.getElementById("publicDecks");
+
+        result.data.forEach(deck=>{
+            const el=document.createElement("div");
+            el.className="deck-item";
+
+            el.innerHTML=`
+                <strong>${escapeHtml(deck.title)}</strong>
+                <p>${deck.flashcards.length} flashcard</p>
+
+                <div class="toolbar">
+                    <button onclick="startStudy('${deck.deck_id}')">
+                        Học
+                    </button>
+
+                    <button class="secondary"
+                        onclick="cloneDeck('${deck.deck_id}')">
+                        Tạo bản sao cá nhân
+                    </button>
+                </div>
+            `;
+
+            publicDecks.appendChild(el);
+        });
+
+        await loadPersonalDecks();
+
+    }catch(error){
+        notify(error.message);
+    }
+}
+
+async function startStudy(deckId){
+    try{
+        const response=await fetch(`${API}/api/decks/${deckId}`);
+        const result=await response.json();
+
+        if(!response.ok)
+            throw new Error(result.detail);
+
+        currentDeck=result.data;
+        currentIndex=0;
+        flipped=false;
+
+        renderStudy();
+
+    }catch(error){
+        notify(error.message);
+    }
+}
+
+function renderStudy(){
+    const container=document.getElementById("studentContent");
+    const card=currentDeck.flashcards[currentIndex];
+
+    container.innerHTML=`
+        <div class="progress">
+            ${currentIndex+1} / ${currentDeck.flashcards.length}
+        </div>
+
+        <div class="card study" onclick="flipCard()">
+            <div class="study-inner">
+                <small>${flipped?"ĐÁP ÁN":"CÂU HỎI"}</small>
+
+                <div class="study-question">
+                    ${escapeHtml(
+                        flipped ? card.answer : card.question
+                    )}
+                </div>
+
+                ${
+                    flipped
+                    ? `<div class="source">
+                        📖 Trang ${card.source.page}<br>
+                        ${escapeHtml(card.source.text)}
+                       </div>`
+                    : `<small>Click để lật thẻ</small>`
+                }
+            </div>
+        </div>
+
+        <div class="toolbar">
+            ${
+                flipped
+                ? `
+                <button class="danger"
+                    onclick="review('not_remembered')">
+                    Chưa nhớ
+                </button>
+
+                <button class="success"
+                    onclick="review('remembered')">
+                    Đã nhớ
+                </button>
+                `
+                : ""
+            }
+
+            <button class="warning"
+                onclick="showReportForm()">
+                Báo cáo lỗi thẻ
+            </button>
+        </div>
+
+        <div id="reportForm"></div>
+
+        <div class="toolbar">
+            <button class="secondary"
+                onclick="previousCard()">
+                ← Trước
+            </button>
+
+            <button onclick="nextCard()">
+                Sau →
+            </button>
+
+            <button class="secondary"
+                onclick="loadDecks()">
+                Thoát
+            </button>
+        </div>
+    `;
+}
+
+function flipCard(){
+    flipped=!flipped;
+    renderStudy();
+}
+
+async function review(result){
+    const studentId=document.getElementById("studentId").value;
+
+    try{
+        await fetch(
+            `${API}/api/flashcards/${currentDeck.flashcards[currentIndex].id}/review`,
+            {
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({
+                    student_id:studentId,
+                    result
+                })
+            }
+        );
+
+        nextCard();
+
+    }catch(error){
+        notify(error.message);
+    }
+}
+
+function nextCard(){
+    if(currentIndex<currentDeck.flashcards.length-1){
+        currentIndex++;
+        flipped=false;
+        renderStudy();
+    }else{
+        notify("Bạn đã hoàn thành bộ flashcard!","success");
+        loadProgress();
+    }
+}
+
+function previousCard(){
+    if(currentIndex>0){
+        currentIndex--;
+        flipped=false;
+        renderStudy();
+    }
+}
+
+function showReportForm(){
+    document.getElementById("reportForm").innerHTML=`
+        <div class="report-form">
+            <label class="label">Loại lỗi</label>
+
+            <select id="reportType">
+                <option value="wrong_answer">Sai câu trả lời</option>
+                <option value="wrong_source">Sai nguồn</option>
+                <option value="unclear_question">Câu hỏi không rõ</option>
+                <option value="code_error">Sai code/công thức</option>
+                <option value="other">Khác</option>
+            </select>
+
+            <label class="label">Mô tả</label>
+
+            <textarea id="reportDescription"
+                rows="4"
+                placeholder="Mô tả vấn đề..."></textarea>
+
+            <div class="toolbar">
+                <button onclick="submitReport()">
+                    Gửi báo cáo
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+async function submitReport(){
+    const studentId=document.getElementById("studentId").value;
+    const card=currentDeck.flashcards[currentIndex];
+
+    try{
+        const response=await fetch(
+            `${API}/api/flashcards/${card.id}/report`,
+            {
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({
+                    student_id:studentId,
+                    type:document.getElementById("reportType").value,
+                    description:document.getElementById("reportDescription").value
+                })
+            }
+        );
+
+        const result=await response.json();
+
+        if(!response.ok)
+            throw new Error(result.detail);
+
+        notify(result.message,"success");
+        document.getElementById("reportForm").innerHTML="";
+
+    }catch(error){
+        notify(error.message);
+    }
+}
+
+async function cloneDeck(deckId){
+    const studentId=document.getElementById("studentId").value;
+
+    try{
+        const response=await fetch(
+            `${API}/api/decks/${deckId}/clone`,
+            {
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({
+                    student_id:studentId
+                })
+            }
+        );
+
+        const result=await response.json();
+
+        if(!response.ok)
+            throw new Error(result.detail);
+
+        notify(result.message,"success");
+
+        await loadPersonalDecks();
+
+    }catch(error){
+        notify(error.message);
+    }
+}
+
+async function loadProgress(){
+    const studentId=document.getElementById("studentId").value;
+
+    try{
+        const response=await fetch(
+            `${API}/api/students/${studentId}/progress`
+        );
+
+        const result=await response.json();
+
+        document.getElementById("studentContent").innerHTML=`
+            <div class="card">
+                <h3>Tiến độ học tập</h3>
+                <p>Tổng lượt ôn: <strong>${result.total_reviews}</strong></p>
+                <p>Đã nhớ: <strong>${result.remembered}</strong></p>
+                <p>Chưa nhớ: <strong>${result.not_remembered}</strong></p>
+                <p>Tỷ lệ nhớ:
+                    <strong>${result.remember_rate}%</strong>
+                </p>
+            </div>
+        `;
+
+    }catch(error){
+        notify(error.message);
+    }
+}
+
+async function loadPersonalDecks(){
+    const studentId=document.getElementById("studentId").value;
+
+    try{
+        const response=await fetch(
+            `${API}/api/students/${studentId}/personal-decks`
+        );
+
+        const result=await response.json();
+
+        const container=document.getElementById("personalContent");
+
+        if(!result.data.length){
+            container.innerHTML="";
+            return;
+        }
+
+        container.innerHTML=`
+            <div class="panel">
+                <h2>Deck cá nhân</h2>
+                <div id="personalDeckList"></div>
+            </div>
+        `;
+
+        const list=document.getElementById("personalDeckList");
+
+        result.data.forEach(deck=>{
+            const el=document.createElement("div");
+            el.className="deck-item";
+
+            el.innerHTML=`
+                <strong>${escapeHtml(deck.title)}</strong>
+
+                <p>
+                    ${deck.flashcards.length} flashcard
+                </p>
+
+                <div class="toolbar">
+                    <button
+                        onclick="openPersonalDeck('${deck.deck_id}')">
+                        Chỉnh sửa
+                    </button>
+                </div>
+            `;
+
+            list.appendChild(el);
+        });
+
+    }catch(error){
+        notify(error.message);
+    }
+}
+
+
+async function openPersonalDeck(deckId){
+    const studentId=document.getElementById("studentId").value;
+
+    const response=await fetch(
+        `${API}/api/students/${studentId}/personal-decks`
+    );
+
+    const result=await response.json();
+
+    const deck=result.data.find(
+        x=>x.deck_id===deckId
+    );
+
+    if(!deck){
+        notify("Không tìm thấy personal deck.");
+        return;
+    }
+
+    const container=document.getElementById("studentContent");
+
+    container.innerHTML=`
+        <div class="panel">
+            <h2>${escapeHtml(deck.title)}</h2>
+
+            <div id="personalCards"></div>
+
+            <div class="toolbar">
+                <button onclick="addPersonalCard('${deck.deck_id}')">
+                    + Thêm thẻ
+                </button>
+
+                <button
+                    class="secondary"
+                    onclick="loadDecks()">
+                    ← Quay lại
+                </button>
+            </div>
+        </div>
+    `;
+
+    renderPersonalCards(deck);
+}
+
+function renderPersonalCards(deck){
+    const container=document.getElementById("personalCards");
+
+    container.innerHTML="";
+
+    deck.flashcards.forEach((card,index)=>{
+        const el=document.createElement("div");
+
+        el.className="card";
+
+        el.innerHTML=`
+            <div class="card-header">
+                <strong>Card #${index+1}</strong>
+
+                <button
+                    class="danger"
+                    onclick="deletePersonalCard('${card.id}')">
+                    Xóa
+                </button>
+            </div>
+
+            <div class="label">
+                Câu hỏi
+            </div>
+
+            <input
+                id="q-${card.id}"
+                value="${escapeHtml(card.question)}">
+
+            <div class="label">
+                Câu trả lời
+            </div>
+
+            <textarea
+                id="a-${card.id}"
+                rows="5">${escapeHtml(card.answer)}</textarea>
+
+            <div class="toolbar">
+                <button
+                    onclick="savePersonalCard('${card.id}')">
+                    Lưu
+                </button>
+            </div>
+        `;
+
+        container.appendChild(el);
+    });
+}
+
+async function savePersonalCard(cardId){
+    const question=document.getElementById(`q-${cardId}`).value;
+    const answer=document.getElementById(`a-${cardId}`).value;
+
+    if(!question.trim() || !answer.trim()){
+        notify("Question và answer không được để trống.");
+        return;
+    }
+
+    try{
+        const response=await fetch(
+            `${API}/api/personal-flashcards/${cardId}`,
+            {
+                method:"PUT",
+                headers:{
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({
+                    question,
+                    answer
+                })
+            }
+        );
+
+        const result=await response.json();
+
+        if(!response.ok)
+            throw new Error(result.detail);
+
+        notify("Đã lưu thay đổi.","success");
+
+    }catch(error){
+        notify(error.message);
+    }
+}
+
+async function deletePersonalCard(cardId){
+    if(!confirm("Xóa flashcard này?"))
+        return;
+
+    try{
+        const response=await fetch(
+            `${API}/api/personal-flashcards/${cardId}`,
+            {
+                method:"DELETE"
+            }
+        );
+
+        const result=await response.json();
+
+        if(!response.ok)
+            throw new Error(result.detail);
+
+        notify(result.message,"success");
+
+        await loadDecks();
+
+    }catch(error){
+        notify(error.message);
+    }
+}
+
+async function addPersonalCard(deckId){
+    const question=prompt("Nhập câu hỏi:");
+
+    if(!question?.trim())
+        return;
+
+    const answer=prompt("Nhập câu trả lời:");
+
+    if(!answer?.trim())
+        return;
+
+    const studentId=document.getElementById("studentId").value;
+
+    try{
+        const response=await fetch(
+            `${API}/api/personal-flashcards`,
+            {
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({
+                    student_id:studentId,
+                    deck_id:deckId,
+                    question,
+                    answer
+                })
+            }
+        );
+
+        const result=await response.json();
+
+        if(!response.ok)
+            throw new Error(result.detail);
+
+        notify("Đã thêm flashcard.","success");
+
+        openPersonalDeck(deckId);
+
+    }catch(error){
+        notify(error.message);
+    }
+}
+
+async function loadReports(){
+    try{
+        const response=await fetch(`${API}/api/reports`);
+        const result=await response.json();
+
+        const container=document.getElementById("reports");
+
+        container.innerHTML="";
+
+        if(!result.data.length){
+            container.innerHTML="<p>Chưa có báo cáo.</p>";
+            return;
+        }
+
+        result.data.forEach(report=>{
+            const el=document.createElement("div");
+
+            el.className="card";
+
+            el.innerHTML=`
+                <strong>
+                    Report ${escapeHtml(report.report_id)}
+                </strong>
+
+                <p>
+                    Flashcard:
+                    ${escapeHtml(report.flashcard_id)}
+                </p>
+
+                <p>
+                    Student:
+                    ${escapeHtml(report.student_id)}
+                </p>
+
+                <p>
+                    Loại lỗi:
+                    <strong>
+                        ${escapeHtml(report.type)}
+                    </strong>
+                </p>
+
+                <p>
+                    ${escapeHtml(report.description || "Không có mô tả")}
+                </p>
+
+                <p>
+                    Status:
+                    <strong>
+                        ${escapeHtml(report.status)}
+                    </strong>
+                </p>
+
+                <div class="toolbar">
+                    <button
+                        onclick="updateReport(
+                            '${report.report_id}',
+                            'in_review'
+                        )">
+                        Đang xử lý
+                    </button>
+
+                    <button
+                        class="success"
+                        onclick="updateReport(
+                            '${report.report_id}',
+                            'resolved'
+                        )">
+                        Đã xử lý
+                    </button>
+                </div>
+            `;
+
+            container.appendChild(el);
+        });
+
+    }catch(error){
+        notify(error.message);
+    }
+}
+
+async function updateReport(reportId,status){
+    try{
+        const response=await fetch(
+            `${API}/api/reports/${reportId}?status=${status}`,
+            {
+                method:"PUT"
+            }
+        );
+
+        const result=await response.json();
+
+        if(!response.ok)
+            throw new Error(result.detail);
+
+        notify("Đã cập nhật report.","success");
+
+        loadReports();
+
+    }catch(error){
+        notify(error.message);
+    }
+}
+
+
+</script>
+
+</body>
+</html>
