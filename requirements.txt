@@ -1,1 +1,2 @@
-genai
+google-genai>=0.8.0
+python-dotenv
