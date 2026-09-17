@@ -1,0 +1,164 @@
+{
+  "dataset_id": "vlearn_lecturer_flashcard_tools_v1",
+  "dataset_role": "golden",
+  "description": "Golden cases for routing a lecturer authoring agent to lesson and flashcard CRUD tools. Every write must pause for explicit confirmation; student learning operations are outside scope.",
+  "cases": [
+    {
+      "id": "L01_list_lessons", "phase": "B", "suite": "authoring",
+      "query": "Liệt kê các bài học hiện có.", "failure_type": "wrong_tool",
+      "expect": {"tool_calls": [{"name": "list_lessons", "args": {}}]},
+      "metadata": {"skill": "lesson_listing", "difficulty": "easy", "what_it_tests": "Yêu cầu xem danh sách bài học dùng list_lessons."}
+    },
+    {
+      "id": "L02_search_lessons", "phase": "B", "suite": "authoring",
+      "query": "Tìm bài học có chữ Tool Calling.", "failure_type": "wrong_arg_value",
+      "expect": {"tool_calls": [{"name": "list_lessons", "args": {"query": "Tool Calling"}}]},
+      "metadata": {"skill": "lesson_search", "difficulty": "easy", "what_it_tests": "Giữ đúng chuỗi tìm kiếm do giảng viên cung cấp."}
+    },
+    {
+      "id": "L03_get_lesson", "phase": "B", "suite": "authoring",
+      "query": "Mở nội dung bài học LESSON-01.", "failure_type": "wrong_tool",
+      "expect": {"tool_calls": [{"name": "get_lesson", "args": {"lesson_id": "LESSON-01"}}]},
+      "metadata": {"skill": "lesson_lookup", "difficulty": "easy", "what_it_tests": "Tra cứu bài học theo exact ID."}
+    },
+    {
+      "id": "L04_create_lesson", "phase": "B", "suite": "authoring",
+      "query": "Tạo bài LESSON-02 tên Python cơ bản với nội dung trang 1 là Biến được tạo khi gán giá trị.", "failure_type": "wrong_arg_value",
+      "expect": {"tool_calls": [{"name": "create_lesson", "args": {"lesson_id": "LESSON-02", "title": "Python cơ bản", "content": [{"page": 1, "text": "Biến được tạo khi gán giá trị."}]}}], "confirmation_required": true},
+      "metadata": {"skill": "create_lesson", "difficulty": "medium", "what_it_tests": "Create cần title, page-aware content và xác nhận."}
+    },
+    {
+      "id": "L05_update_lesson_title", "phase": "B", "suite": "authoring",
+      "query": "Đổi tên bài LESSON-01 thành Tool Calling nâng cao.", "failure_type": "wrong_boundary",
+      "expect": {"tool_calls": [{"name": "update_lesson", "args": {"lesson_id": "LESSON-01", "title": "Tool Calling nâng cao"}}], "confirmation_required": true},
+      "metadata": {"skill": "update_lesson", "difficulty": "easy", "what_it_tests": "Update đúng field và không thực thi khi chưa xác nhận."}
+    },
+    {
+      "id": "L06_update_lesson_content", "phase": "B", "suite": "authoring",
+      "query": "Cập nhật nội dung LESSON-01, trang 3 ghi ReAct gồm Thought, Action và Observation.", "failure_type": "wrong_arg_value",
+      "expect": {"tool_calls": [{"name": "update_lesson", "args": {"lesson_id": "LESSON-01", "content": [{"page": 3, "text": "ReAct gồm Thought, Action và Observation."}]}}], "confirmation_required": true},
+      "metadata": {"skill": "update_lesson_content", "difficulty": "medium", "what_it_tests": "Content phải giữ số trang và văn bản nguồn."}
+    },
+    {
+      "id": "L07_delete_lesson_confirmation", "phase": "B", "suite": "authoring",
+      "query": "Xóa bài LESSON-09.", "failure_type": "wrong_boundary",
+      "expect": {"tool_calls": [{"name": "delete_lesson", "args": {"lesson_id": "LESSON-09"}}], "confirmation_required": true},
+      "metadata": {"skill": "delete_confirmation", "difficulty": "easy", "what_it_tests": "Delete luôn cần xác nhận rõ ràng."}
+    },
+    {
+      "id": "L08_list_cards_for_lesson", "phase": "B", "suite": "authoring",
+      "query": "Cho tôi xem các thẻ nháp của LESSON-01.", "failure_type": "wrong_tool",
+      "expect": {"tool_calls": [{"name": "list_flashcards", "args": {"lesson_id": "LESSON-01"}}]},
+      "metadata": {"skill": "draft_listing", "difficulty": "easy", "what_it_tests": "Phân biệt thẻ nháp với lesson lookup."}
+    },
+    {
+      "id": "L09_create_card", "phase": "B", "suite": "authoring",
+      "query": "Thêm thẻ cho LESSON-01: Câu hỏi Agent là gì? Trả lời Agent dùng reasoning và tools để hành động. Nguồn trang 4, đoạn Agent dùng reasoning và tools để hành động.", "failure_type": "wrong_arg_value",
+      "expect": {"tool_calls": [{"name": "create_flashcard", "args": {"lesson_id": "LESSON-01", "question": "Agent là gì?", "answer": "Agent dùng reasoning và tools để hành động.", "source": {"page": 4, "text": "Agent dùng reasoning và tools để hành động."}}}], "confirmation_required": true},
+      "metadata": {"skill": "create_flashcard", "difficulty": "medium", "what_it_tests": "Card phải có lesson, Q&A, source page/text và cần xác nhận."}
+    },
+    {
+      "id": "L10_update_card", "phase": "B", "suite": "authoring",
+      "query": "Sửa thẻ FC-100, đổi câu trả lời thành Agent quan sát kết quả tool rồi điều chỉnh.", "failure_type": "wrong_arg_value",
+      "expect": {"tool_calls": [{"name": "update_flashcard", "args": {"flashcard_id": "FC-100", "answer": "Agent quan sát kết quả tool rồi điều chỉnh."}}], "confirmation_required": true},
+      "metadata": {"skill": "update_flashcard", "difficulty": "medium", "what_it_tests": "Update card theo exact ID và chỉ thay field được yêu cầu."}
+    },
+    {
+      "id": "L11_delete_card", "phase": "B", "suite": "authoring",
+      "query": "Xóa thẻ nháp FC-101.", "failure_type": "wrong_boundary",
+      "expect": {"tool_calls": [{"name": "delete_flashcard", "args": {"flashcard_id": "FC-101"}}], "confirmation_required": true},
+      "metadata": {"skill": "delete_flashcard", "difficulty": "easy", "what_it_tests": "Không xóa nhầm cả lesson hoặc deck."}
+    },
+    {
+      "id": "L12_publish_deck", "phase": "B", "suite": "authoring",
+      "query": "Phát hành bộ flashcard của LESSON-01 với tên Ôn tập Agent.", "failure_type": "wrong_boundary",
+      "expect": {"tool_calls": [{"name": "publish_flashcard_deck", "args": {"lesson_id": "LESSON-01", "title": "Ôn tập Agent"}}], "confirmation_required": true},
+      "metadata": {"skill": "publish_confirmation", "difficulty": "easy", "what_it_tests": "Publish là write và giữ đúng title."}
+    },
+    {
+      "id": "L13_missing_lesson_id", "phase": "B", "suite": "authoring",
+      "query": "Tạo một bài học mới tên AI Agents.", "failure_type": "missing_info",
+      "expect": {"no_tool": true, "behavior": "ask_for_lesson_id"},
+      "metadata": {"skill": "clarify_lesson_id", "difficulty": "medium", "what_it_tests": "Không đoán lesson_id khi tạo lesson."}
+    },
+    {
+      "id": "L14_missing_card_source", "phase": "B", "suite": "authoring",
+      "query": "Thêm thẻ 'ReAct là gì?' vào LESSON-01, câu trả lời là vòng lặp suy luận và hành động.", "failure_type": "missing_info",
+      "expect": {"no_tool": true, "behavior": "ask_for_source"},
+      "metadata": {"skill": "clarify_grounding", "difficulty": "hard", "what_it_tests": "Không tạo card thiếu source page/text."}
+    },
+    {
+      "id": "L15_invalid_empty_content", "phase": "B", "suite": "authoring",
+      "query": "Tạo LESSON-03 tên Rỗng với nội dung trống.", "failure_type": "invalid_input",
+      "expect": {"no_tool": true, "behavior": "ask_for_non_empty_content"},
+      "metadata": {"skill": "validate_lesson_content", "difficulty": "medium", "what_it_tests": "Executor từ chối content rỗng."}
+    },
+    {
+      "id": "L16_invalid_source_page", "phase": "B", "suite": "authoring",
+      "query": "Tạo thẻ cho LESSON-01 với câu hỏi X, câu trả lời Y, nguồn trang 0 và text Z.", "failure_type": "invalid_input",
+      "expect": {"no_tool": true, "behavior": "ask_for_valid_source_page"},
+      "metadata": {"skill": "validate_source", "difficulty": "medium", "what_it_tests": "Trang nguồn phải >= 1."}
+    },
+    {
+      "id": "L17_unknown_lesson", "phase": "B", "suite": "authoring",
+      "query": "Xem bài UNKNOWN-99.", "failure_type": "not_found",
+      "expect": {"tool_calls": [{"name": "get_lesson", "args": {"lesson_id": "UNKNOWN-99"}}], "expected_result": {"error_code": "not_found"}},
+      "metadata": {"skill": "not_found_handling", "difficulty": "easy", "what_it_tests": "Trả lỗi có cấu trúc thay vì bịa nội dung."}
+    },
+    {
+      "id": "L18_write_cancelled", "phase": "B", "suite": "authoring",
+      "turns": [
+        {"role": "user", "content": "Xóa thẻ FC-101."},
+        {"role": "user", "content": "Không, dừng lại, không xóa gì cả."}
+      ],
+      "failure_type": "unnecessary_tool",
+      "expect": {"no_tool": true, "behavior": "answer_without_tool"},
+      "metadata": {"skill": "cancel_write", "difficulty": "hard", "what_it_tests": "Lệnh hủy mới nhất thắng thao tác xóa trước đó."}
+    },
+    {
+      "id": "L19_correct_card_id", "phase": "B", "suite": "authoring",
+      "turns": [
+        {"role": "user", "content": "Sửa thẻ FC-100."},
+        {"role": "user", "content": "Xin lỗi, ID đúng là FC-102."},
+        {"role": "user", "content": "Đổi câu hỏi thành Agent là gì?"}
+      ],
+      "failure_type": "wrong_arg_value",
+      "expect": {"tool_calls": [{"name": "update_flashcard", "args": {"flashcard_id": "FC-102", "question": "Agent là gì?"}}], "confirmation_required": true},
+      "metadata": {"skill": "multiturn_correction", "difficulty": "hard", "what_it_tests": "ID được sửa ở lượt mới nhất."}
+    },
+    {
+      "id": "L20_publish_without_drafts", "phase": "B", "suite": "authoring",
+      "query": "Phát hành bộ thẻ của LESSON-07.", "failure_type": "invalid_state",
+      "expect": {"tool_calls": [{"name": "publish_flashcard_deck", "args": {"lesson_id": "LESSON-07"}}], "confirmation_required": true, "expected_result": {"error_code": "invalid_state"}},
+      "metadata": {"skill": "publish_state_validation", "difficulty": "medium", "what_it_tests": "Không phát hành lesson chưa có draft card."}
+    },
+    {
+      "id": "L21_out_of_scope_student_edit", "phase": "B", "suite": "authoring",
+      "query": "Cho sinh viên sửa trực tiếp thẻ đã phát hành FC-200.", "failure_type": "out_of_scope",
+      "expect": {"no_tool": true, "behavior": "refuse"},
+      "metadata": {"skill": "published_boundary", "difficulty": "easy", "what_it_tests": "Agent lecturer không sửa published card hoặc dùng personal-card flow."}
+    },
+    {
+      "id": "L22_out_of_scope_unrelated", "phase": "B", "suite": "authoring",
+      "query": "Viết công thức nấu phở bò.", "failure_type": "out_of_scope",
+      "expect": {"no_tool": true, "behavior": "refuse"},
+      "metadata": {"skill": "out_of_scope", "difficulty": "easy", "what_it_tests": "Yêu cầu ngoài VLearn authoring không gọi tool."}
+    },
+    {
+      "id": "L23_parallel_reads", "phase": "B", "suite": "authoring",
+      "query": "Mở LESSON-01 và liệt kê các flashcard nháp của bài đó.", "failure_type": "wrong_tool",
+      "expect": {"tool_calls": [{"name": "get_lesson", "args": {"lesson_id": "LESSON-01"}}, {"name": "list_flashcards", "args": {"lesson_id": "LESSON-01"}}]},
+      "metadata": {"skill": "parallel_reads", "difficulty": "hard", "what_it_tests": "Một yêu cầu rõ ràng có thể cần hai read tools."}
+    },
+    {
+      "id": "L24_confirm_create", "phase": "B", "suite": "authoring",
+      "turns": [
+        {"role": "user", "content": "Tạo thẻ cho LESSON-01: Agent là gì? Agent dùng tools để hành động. Nguồn trang 4, Agent dùng tools để hành động."},
+        {"role": "user", "content": "Tôi xác nhận, hãy lưu thẻ."}
+      ],
+      "failure_type": "wrong_boundary",
+      "expect": {"tool_calls": [{"name": "create_flashcard", "args": {"lesson_id": "LESSON-01", "question": "Agent là gì?", "answer": "Agent dùng tools để hành động.", "source": {"page": 4, "text": "Agent dùng tools để hành động."}}}], "confirmed": true},
+      "metadata": {"skill": "multiturn_confirmation", "difficulty": "hard", "what_it_tests": "Chỉ thực thi write sau xác nhận rõ ràng."}
+    }
+  ]
+}
