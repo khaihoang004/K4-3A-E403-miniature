@@ -37,12 +37,20 @@ Loại: [x] Tính năng mới  [ ] Tối ưu tính năng có sẵn
 
 ## §4. Thiết kế
 - Lát cắt MỘT CÂU (1 user · 1 việc · 1 quyết định AI · 1 kết quả):
+> Giảng viên (1 user) chọn bài học đã có trên VLearn và tích chọn trọng tâm (1 việc), AI phân tích slide bài học và tạo bộ Flashcard nháp thẻ kèm trích dẫn `[Trang N]` (1 quyết định AI), Giảng viên xem lại và bấm 'Phát hành' cho học viên vào lật thẻ ôn tập active recall mà không tốn công soạn thủ công (1 kết quả).
 - Non-goals (≥3 thứ KHÔNG build):
+  1. Không cho phép học viên trực tiếp chỉnh sửa bộ thẻ gốc của bài học sau khi đã phát hành (chỉ được lật thẻ, đánh dấu "Đã nhớ / Chưa nhớ", hoặc bấm "Báo cáo lỗi / Tạo bản sao cá nhân").
+  2. Không yêu cầu Giảng viên phải tải file ngoài lên (chỉ trích xuất dữ liệu từ các bài học đã có sẵn trên nền tảng VLearn).
+  3. Không tích hợp đồng bộ tự động với ứng dụng bên thứ ba như Anki/Quizlet qua API (chỉ chạy trực tiếp trên hệ thống VLearn).
 - Mức prototype nhắm tới: [ ] Sketch [ ] Mock [ ] Working — phần nào mock, phần nào thật:
 - Automation: [ ] augment [ ] conditional [ ] automate — lý do theo cost-of-error:
 - §4b. Nguyên tắc đã áp dụng (≥4 — HAX/PAIR, xem guide):
   | Nguyên tắc | Áp cụ thể vào đâu trong prototype |
   |---|---|
+  | **G1 — Make clear what the system can do** | Ở Bước 1, giao diện Giảng viên ghi rõ: *"AI đọc nội dung bài học đã chọn và trích xuất thẻ nháp theo trọng tâm"*. |
+  | **G2 — Make clear how well the system can do** | Ở Bước 3 (Kiểm duyệt), mỗi thẻ nháp đều hiển thị tag trích dẫn nguồn `[Slide X - Trang Y]` để Giảng viên dễ dàng kiểm tra độ chính xác. |
+  | **G9 — Support efficient correction** | Ở Bước 3, Giảng viên xem lại danh sách thẻ nháp và có thể điều chỉnh hoặc duyệt trước khi chính thức nhấn *"Phát hành"*. |
+  | **G10 — Scope services when uncertain** | Nếu bài học đã chọn có quá ít nội dung, AI không cố sinh đủ số thẻ yêu cầu mà chỉ sinh 3-5 thẻ chắc chắn kèm thông báo *"Nội dung bài học ngắn, AI chỉ trích xuất được 3 thẻ đạt độ tự tin cao"*. |
 
 ## §5. Kiểu lỗi — 4 lớp chỗ khó + kịch bản (≥8) [bảng theo guide §2.5]
 
