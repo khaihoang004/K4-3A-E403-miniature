@@ -47,8 +47,22 @@ Loại: [x] Tính năng mới  [ ] Tối ưu tính năng có sẵn
 ## §5. Kiểu lỗi — 4 lớp chỗ khó + kịch bản (≥8) [bảng theo guide §2.5]
 
 ## §6. Bốn đường đi của trải nghiệm
-- Happy path: · Low-confidence (②): · Failure/không căn cứ (①): · Correction (user sửa):
-- Khi bị đòi ngoài phạm vi (③): · Case đặc thù domain (④):
+- **Happy path:**
+  - **Bước 1 (Đầu vào):** Giảng viên chọn bài học đã có trên VLearn và chọn trọng tâm
+  - **Bước 2 (AI xử lý):** AI phân tích tài liệu bài học và tự động tạo ra bộ 5-10 thẻ Flashcard nháp có trích dẫn `[Trang N]`.
+  - **Bước 3 (Kiểm duyệt):** Giảng viên xem lại danh sách thẻ nháp, sau đó nhấn nút **"Phát hành (Publish)"**.
+  - **Bước 4 (Phía học viên):** Học viên vào bài học thấy bộ thẻ đã phát hành, lật từng thẻ ôn tập và bấm đánh dấu *"Đã nhớ / Chưa nhớ"*.
+- **Low-confidence path (Khi AI nghi ngờ / Độ tự tin thấp - ②):**
+  - Bài học đã chọn có nội dung ngắn hoặc ít khái niệm $\rightarrow$ AI hiển thị thông báo: *"Bài học ngắn, AI chỉ trích xuất được 3 thẻ nháp chắc chắn"* $\rightarrow$ Giảng viên xem duyệt 3 thẻ và có thể tạo thêm thẻ trước khi bấm *"Phát hành"*.
+- **Failure / Không căn cứ (Khi không tìm thấy thông tin - ①):**
+  - Giảng viên chọn bài học chưa có nội dung slide/văn bản $\rightarrow$ AI thông báo lỗi: *"Bài học này chưa có dữ liệu slide để trích xuất thẻ. Vui lòng chọn bài học khác."*
+- **Correction (Cơ chế người dùng sửa kết quả):**
+  - **Phía Giảng viên (Bước 3):** Xem lại toàn bộ danh sách thẻ nháp trước khi quyết định ấn "Phát hành".
+  - **Phía Học viên (Bước 4):** Học viên không được chỉnh sửa bộ thẻ gốc của bài học, nhưng có thể bấm *"Báo cáo lỗi thẻ"* (gửi phản hồi cho Giảng viên) hoặc bấm *"Tạo bản sao cá nhân"* để tự chỉnh sửa bản riêng theo ý mình.
+- **Khi bị đòi ngoài phạm vi (③):**
+  - Học viên hoặc Giảng viên yêu cầu sinh thẻ từ nội dung ngoài bài học đã chọn $\rightarrow$ AI từ chối và báo rõ: *"Tutor chỉ hỗ trợ tạo Flashcard từ dữ liệu của bài học được chọn trên VLearn"*.
+- **Case đặc thù domain (④):**
+  - Bài học chứa khối mã nguồn (code block) hoặc công thức phức tạp $\rightarrow$ AI giữ nguyên định dạng code/công thức trên mặt thẻ, không tự ý tóm tắt làm sai cú pháp lập trình.
 
 ## §7. Kiểm thử
 - Chiều chất lượng + định nghĩa kiểm chứng được:
