@@ -178,6 +178,39 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/lesson-content/{lesson_id}")
+def get_lesson_content(lesson_id: str):
+    lesson_files = {
+        "day01": BASE_DIR / "data" / "d1-slide-hackathon.json",
+        "day02": BASE_DIR / "data" / "d2-slide-hackathon.json",
+    }
+    lesson_file = lesson_files.get(lesson_id.lower())
+    if not lesson_file:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bài học.")
+
+    slides = read_json(lesson_file, [])
+    if not slides:
+        raise HTTPException(status_code=404, detail="Bài học chưa có nội dung.")
+
+    content_parts = []
+    concepts = []
+    for slide in slides:
+        page = slide.get("page")
+        content = str(slide.get("content", "")).strip()
+        if page and content:
+            content_parts.append(f"[Trang {page}]\n\n{content}")
+        concepts.extend(slide.get("concepts", []))
+
+    return {
+        "success": True,
+        "lesson_id": lesson_id.lower(),
+        "title": slides[0].get("title", lesson_id),
+        "content": "\n\n".join(content_parts),
+        "focus": list(dict.fromkeys(concepts)),
+        "slide_count": len(slides),
+    }
+
+
 @app.post("/api/agent", response_model=AgentResponse)
 def run_agent(req: AgentRequest):
     try:

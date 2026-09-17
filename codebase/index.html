@@ -389,29 +389,17 @@ button.icon-only{padding:8px 10px}
           </div>
         </div>
 
-        <label class="field-label">Mã bài học</label>
-        <input id="lessonId" value="demo-lesson">
+        <label class="field-label" for="lessonId">Bài học</label>
+        <select id="lessonId" onchange="loadLessonContent()">
+          <option value="day01">Day 01 · AI &amp; LLM Foundation</option>
+          <option value="day02">Day 02 · Xác định bài toán cho AI</option>
+        </select>
 
-        <label class="field-label">Trọng tâm (phân tách bằng dấu phẩy)</label>
-        <input id="focus" value="Python variables, Python loops">
+        <label class="field-label">Yêu cầu thêm</label>
+        <input id="focus" placeholder="Tự động điền theo bài học">
 
         <label class="field-label">Nội dung bài học</label>
-        <textarea id="lessonContent" class="lesson-input">[Trang 1]
-
-Biến trong Python được tạo ra khi bạn gán một giá trị cho nó. Không cần khai báo kiểu dữ liệu.
-
-[Trang 2]
-
-Vòng lặp for trong Python dùng để lặp qua một chuỗi (như list, tuple, dictionary, set, hoặc string).
-
-Ví dụ:
-
-```python
-fruits = ["apple", "banana", "cherry"]
-
-for x in fruits:
-    print(x)
-```</textarea>
+        <textarea id="lessonContent" class="lesson-input" placeholder="Nội dung bài học sẽ được nạp từ dữ liệu..."></textarea>
 
         <div class="toolbar">
           <button id="generateBtn" onclick="generateCards()">✨ Tạo flashcard bằng AI</button>
@@ -508,6 +496,30 @@ function setMode(mode){
 }
 
 /* ================= INSTRUCTOR ================= */
+
+async function loadLessonContent(){
+  const lessonId=document.getElementById("lessonId").value;
+  const contentField=document.getElementById("lessonContent");
+  const focusField=document.getElementById("focus");
+
+  contentField.value="Đang tải nội dung bài học...";
+  contentField.disabled=true;
+  focusField.value="";
+
+  try{
+    const response=await fetch(`${API}/api/lesson-content/${lessonId}`);
+    const result=await response.json();
+    if(!response.ok) throw new Error(result.detail||"Không tải được nội dung bài học.");
+
+    contentField.value=result.content||"";
+    focusField.value=(result.focus||[]).join(", ");
+  }catch(error){
+    contentField.value="";
+    notify(error.message);
+  }finally{
+    contentField.disabled=false;
+  }
+}
 
 async function generateCards(){
   const btn=document.getElementById("generateBtn");
@@ -1079,6 +1091,7 @@ async function addPersonalCard(deckId){
   }
 }
 
+loadLessonContent();
 renderCards();
 </script>
 </body>
