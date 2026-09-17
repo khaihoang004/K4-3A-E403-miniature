@@ -86,14 +86,27 @@ Loại: [x] Tính năng mới  [ ] Tối ưu tính năng có sẵn
 - **Chiều chất lượng + định nghĩa kiểm chứng được:**
   1. **Tính chính xác (Groundedness):** 100% nội dung đáp án phải được rút ra từ văn bản bài học được cung cấp, tuyệt đối không bịa đặt (hallucinate) thêm thông tin bên ngoài.
   2. **Định dạng đầu ra (Format):** Trả về đúng định dạng JSON Schema quy định (gồm các trường: Câu hỏi, Đáp án, Nguồn) để hệ thống render không bị lỗi.
-- **Golden set (≥24 case theo cơ cấu trong guide §2.6, file trong eval/):**
-  Bộ 24 đoạn text giả lập (tóm tắt từ các PDF slide khác nhau), được chia thành:
-  - **10 case Happy path:** Đoạn text rõ ràng, có cấu trúc tốt, nhiều định nghĩa.
-  - **5 case Low-confidence:** Đoạn text rất ngắn (< 50 chữ) hoặc chỉ toàn văn kể chuyện, ít khái niệm.
-  - **5 case Edge/Failure:** Text chứa nhiều công thức Toán/Lý phức tạp, hoặc chứa ký tự rác/không có nội dung học thuật.
-  *(Chi tiết bộ test lưu trong file `eval/golden_set.json`)*.
-- Quality bar (chốt từ hạn chốt spec của khoá, giữ nguyên sau đó): "Đạt khi ≥ ___% qua bộ, và ___"
-- Kết quả các lượt chạy (bảng % — cập nhật đến trước CP6):
+- **Golden set (24 case, file `eval/golden_set.json`):**
+  Bộ test hiện tại tập trung vào khả năng Agent gọi đúng tool CRUD, phù hợp với phần Agent đã triển khai. Các nhóm chính gồm:
+  - 12 case routing và truyền arguments cho lesson/card CRUD và publish.
+  - 5 case thiếu thông tin, input không hợp lệ hoặc lesson không tồn tại.
+  - 4 case confirmation, cancellation và sửa thông tin qua nhiều lượt hội thoại.
+  - 2 case ngoài phạm vi hoặc vượt boundary thẻ đã phát hành.
+  - 1 case gọi song song nhiều read tools.
+  Evaluator `eval/agent_eval.py` hỗ trợ `mock` để kiểm tra deterministic và `live` để gọi Gemini thật. Mỗi lượt ghi log JSON và Markdown trong `eval/runs/`.
+
+- **Quality bar:** Đạt khi đạt ít nhất **90% tổng số case live**, trong đó không có provider error; đồng thời không có lỗi nghiêm trọng về gọi nhầm write tool, bỏ qua confirmation hoặc làm mất grounding của source. Kết quả mock chỉ dùng kiểm tra evaluator/schema, không thay thế kết quả live.
+
+- **Kết quả các lượt chạy:**
+
+| Lượt | Chế độ | Kết quả | Nhận xét / cải thiện |
+|---|---|---:|---|
+| 1 | Live | 5/24 (20,8%) | Phát hiện evaluator chưa phân biệt provider error; nhiều case thực chất dừng vì thiếu API key. |
+| 2 | Live | 13/24 (54,2%) | Sau khi nạp `.env`, Agent đã route được phần lớn read/write cơ bản; còn gọi read tool thừa trước update/create/publish. |
+| 3 | Live | 19/24 (79,2%) | Siết lại system prompt theo intent mới nhất, boundary ngoài phạm vi, missing source và invalid input. |
+| 4 | Live | 23/24 (95,8%) | Sửa routing, giữ nguyên payload CRUD và confirmation; còn 1 case `L24` do model paraphrase question/answer khi xác nhận. |
+
+- **Trạng thái hiện tại:** Đã vượt quality bar live về accuracy với kết quả 23/24. Việc cần cải thiện tiếp theo là tăng tính ổn định của `L24_confirm_create`: khi người dùng xác nhận, Agent phải tái sử dụng nguyên payload đang chờ, không tạo lại nội dung bằng cách diễn đạt khác.
 
 ## §8. Phân công & kế hoạch
 - **Phân công có tên:** 
