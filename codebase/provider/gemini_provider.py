@@ -112,7 +112,7 @@ class GeminiProvider:
         self,
         *,
         api_key_env: str = "GEMINI_API_KEY",
-        default_model: str = "gemini-3.1-flash-lite",
+        default_model: str = "gemini-3.5-flash-lite",
         fallback_models: list[str] | None = None,
         cooldown_seconds: int = 60,
     ) -> None:
@@ -220,7 +220,8 @@ class GeminiProvider:
                 return ModelResponse(
                     text="\n".join(part for part in text_parts if part) or None, 
                     tool_calls=deduped_calls, 
-                    raw=resp
+                    raw=resp,
+                    model=current_model
                 )
 
             except Exception as exc:
