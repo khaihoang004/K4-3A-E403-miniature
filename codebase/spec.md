@@ -96,9 +96,15 @@ Loại: [x] Tính năng mới  [ ] Tối ưu tính năng có sẵn
 - Kết quả các lượt chạy (bảng % — cập nhật đến trước CP6):
 
 ## §8. Phân công & kế hoạch
-- Phân công có tên: spec / evidence / prompt / code / demo
-- Willing users (≥2 tên) + kế hoạch vòng validation *(bonus, nếu làm)*:
-- Multi-prototype (nếu làm): trục khác biệt của ≥2 phương án + lý do chọn:
+- **Phân công có tên:** 
+  - **Spec & Thiết kế luồng (Flow):** Nguyễn Thu Trang
+  - **Khảo sát vấn đề (Evidence):** Nguyễn Thu Trang
+  - **Kỹ sư Prompt & Đánh giá (Prompt/Eval):** Nguyễn Minh Dương
+  - **Lập trình Backend/Frontend (Code):** Hoàng Trung Khải
+  - **Quay video & Thuyết trình (Demo):** Nguyễn Minh Dương
+- **Willing users (≥2 tên) + kế hoạch vòng validation *(bonus)*:**
+  - **Người dùng thử:** Học viên T01 (Giấu tên), Học viên T03 (Giấu tên).
+  - **Kế hoạch validation:** Gửi đường link bản Working Prototype cho các người dùng thử sau một buổi học thật. Ghi hình màn hình (screen record) cách họ lật thẻ, sửa thẻ và phỏng vấn ngắn 5 phút sau khi dùng để xem tính năng có giúp họ nhớ bài tốt hơn không.
 
 ## §9. Changelog
 | Thời điểm | Đổi gì | Vì sao (trỏ về feedback/case nào) |
