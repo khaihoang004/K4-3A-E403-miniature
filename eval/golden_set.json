@@ -90,13 +90,13 @@
     {
       "id": "L15_invalid_empty_content", "phase": "B", "suite": "authoring",
       "query": "Tạo LESSON-03 tên Rỗng với nội dung trống.", "failure_type": "invalid_input",
-      "expect": {"tool_calls": [{"name": "create_lesson", "args": {"lesson_id": "LESSON-03", "title": "Rỗng", "content": []}}], "confirmation_required": true, "expected_result": {"error_code": "invalid_input"}},
+      "expect": {"no_tool": true, "behavior": "ask_for_non_empty_content"},
       "metadata": {"skill": "validate_lesson_content", "difficulty": "medium", "what_it_tests": "Executor từ chối content rỗng."}
     },
     {
       "id": "L16_invalid_source_page", "phase": "B", "suite": "authoring",
       "query": "Tạo thẻ cho LESSON-01 với câu hỏi X, câu trả lời Y, nguồn trang 0 và text Z.", "failure_type": "invalid_input",
-      "expect": {"tool_calls": [{"name": "create_flashcard", "args": {"lesson_id": "LESSON-01", "question": "X", "answer": "Y", "source": {"page": 0, "text": "Z"}}}], "confirmation_required": true, "expected_result": {"error_code": "invalid_input"}},
+      "expect": {"no_tool": true, "behavior": "ask_for_valid_source_page"},
       "metadata": {"skill": "validate_source", "difficulty": "medium", "what_it_tests": "Trang nguồn phải >= 1."}
     },
     {

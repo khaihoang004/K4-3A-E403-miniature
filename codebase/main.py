@@ -232,6 +232,18 @@ def run_agent(req: AgentRequest):
                 )
 
             tool_results = []
+            messages.append({
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                    {
+                        "name": call.name,
+                        "args": call.args,
+                        "thought_signature": call.thought_signature,
+                    }
+                    for call in response.tool_calls
+                ],
+            })
             for call in response.tool_calls:
                 result = agent_tools.execute(call.name, call.args, confirmed=req.confirmed)
                 trace.append({"id": call.id, "name": call.name, "args": call.args, "result": result})
@@ -247,17 +259,21 @@ def run_agent(req: AgentRequest):
                     pending_confirmation=pending,
                 )
 
-            messages.append({
-                "role": "tool",
-                "name": "agent_tools",
-                "content": json.dumps(tool_results, ensure_ascii=False),
-            })
+            for tool_result in tool_results:
+                messages.append({
+                    "role": "tool",
+                    "name": tool_result["name"],
+                    "tool_call_id": tool_result["tool_call_id"],
+                    "content": json.dumps(tool_result["result"], ensure_ascii=False),
+                })
 
         raise HTTPException(status_code=502, detail="Agent vượt quá số vòng gọi tool cho phép.")
     except HTTPException:
         raise
     except Exception as exc:
         logger.exception("Agent execution failed")
+        if "GEMINI_API_KEY" in str(exc) or "API key" in str(exc):
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
         raise HTTPException(status_code=500, detail=f"{type(exc).__name__}: {exc}") from exc
 
 
@@ -327,6 +343,8 @@ def generate_flashcards(req: GenerateRequest):
         raise
     except Exception as exc:
         logger.exception("Generate flashcards failed")
+        if "GEMINI_API_KEY" in str(exc) or "API key" in str(exc):
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
         raise HTTPException(
             status_code=500,
             detail=f"{type(exc).__name__}: {exc}",

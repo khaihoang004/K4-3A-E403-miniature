@@ -91,7 +91,7 @@ class ToolRegistry:
             return {"success": False, "error": {"code": "invalid_input", "message": str(exc)}}
 
     def list_lessons(self, args: dict[str, Any]) -> dict[str, Any]:
-        lessons = read_json(self.lessons_file, [])
+        lessons = self._load_lessons()
         query = str(args.get("query", "")).strip().lower()
         if query:
             lessons = [x for x in lessons if query in f"{x.get('lesson_id', '')} {x.get('title', '')}".lower()]
@@ -107,7 +107,7 @@ class ToolRegistry:
         content = args.get("content")
         if not lesson_id or not title or not isinstance(content, list) or not content:
             raise ToolError("invalid_input", "lesson_id, title và content không được trống.")
-        lessons = read_json(self.lessons_file, [])
+        lessons = self._load_lessons()
         if any(x.get("lesson_id") == lesson_id for x in lessons):
             raise ToolError("already_exists", "Lesson ID đã tồn tại.")
         pages = self._validate_content(content)
@@ -191,11 +191,37 @@ class ToolRegistry:
         return {"success": True, "data": deck}
 
     def _find_lesson(self, lesson_id: Any) -> dict[str, Any]:
-        lessons = read_json(self.lessons_file, [])
+        lessons = self._load_lessons()
         lesson = next((x for x in lessons if x.get("lesson_id") == lesson_id), None)
         if not lesson:
             raise ToolError("not_found", "Không tìm thấy lesson.")
         return lesson
+
+    def _load_lessons(self) -> list[dict[str, Any]]:
+        lessons = read_json(self.lessons_file, [])
+        if lessons:
+            return lessons
+
+        slide_files = {
+            "day01": self.base_dir / "data" / "d1-slide-hackathon.json",
+            "day02": self.base_dir / "data" / "d2-slide-hackathon.json",
+        }
+        catalog = []
+        for lesson_id, path in slide_files.items():
+            slides = read_json(path, [])
+            if not slides:
+                continue
+            catalog.append({
+                "lesson_id": lesson_id,
+                "title": slides[0].get("title", lesson_id),
+                "content": [
+                    {"page": slide["page"], "text": slide["content"]}
+                    for slide in slides
+                    if slide.get("page") and str(slide.get("content", "")).strip()
+                ],
+                "source": "slide_pack",
+            })
+        return catalog
 
     @staticmethod
     def _validate_content(content: Any) -> list[dict[str, Any]]:

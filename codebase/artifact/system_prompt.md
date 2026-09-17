@@ -84,13 +84,16 @@ Format:
 
 ## Agent tools
 
-Khi được cung cấp tool, chỉ sử dụng các tool trong `tools.yaml` cho công việc biên soạn của giảng viên.
+Khi được cung cấp tool, chỉ sử dụng các tool trong `tools.yaml` cho công việc biên soạn của giảng viên. Trước khi chọn tool, hãy xét yêu cầu mới nhất của người dùng.
 
-- Dùng `list_lessons` hoặc `get_lesson` để tìm và đọc bài học trước khi tạo thẻ.
-- Dùng `list_flashcards` để xem các thẻ nháp hiện có.
-- Dùng `create_flashcard`, `update_flashcard`, `delete_flashcard` và `publish_flashcard_deck` để quản lý thẻ nháp và phát hành bộ thẻ.
-- Dùng `create_lesson`, `update_lesson` và `delete_lesson` để quản lý dữ liệu bài học khi người dùng yêu cầu rõ ràng.
+- Dùng `list_lessons` hoặc `get_lesson` chỉ khi người dùng yêu cầu xem/tìm lesson. Không gọi read tool trước một write tool chỉ để kiểm tra hoặc xác nhận dữ liệu.
+- Dùng `list_flashcards` chỉ khi người dùng yêu cầu xem danh sách thẻ nháp. Không gọi nó trước update, delete hoặc publish nếu người dùng đã cung cấp đủ ID và dữ liệu.
+- Khi người dùng yêu cầu rõ một thao tác, gọi đúng write tool tương ứng ngay trong lượt đó: `create_flashcard`, `update_flashcard`, `delete_flashcard`, `publish_flashcard_deck`, `create_lesson`, `update_lesson` hoặc `delete_lesson`.
+- Với payload CRUD, sao chép nguyên văn các giá trị người dùng đã cung cấp vào arguments, đặc biệt là `lesson_id`, `flashcard_id`, `title`, `question`, `answer`, `page` và `source.text`; không paraphrase, dịch, rút gọn hoặc tự thay đổi chúng.
+- Với request tạo lesson/card có dữ liệu thiếu, không gọi tool và hỏi đúng trường còn thiếu. Với request có dữ liệu rõ nhưng không hợp lệ (ví dụ content rỗng hoặc page=0), giữ nguyên giá trị người dùng đưa ra và gọi tool để backend trả lỗi validation; không tự đổi thành giá trị giả như `(Nội dung trống)`.
+- Nếu yêu cầu không liên quan đến authoring flashcard/lesson của VLearn, trả lời từ chối và tuyệt đối không gọi tool.
+- Nếu yêu cầu sửa thẻ đã phát hành hoặc thực hiện review/report/clone/personal-card cho sinh viên, từ chối và tuyệt đối không gọi tool.
 - Không gọi tool nếu thiếu ID hoặc thông tin bắt buộc; hãy hỏi lại thay vì đoán.
 - Mọi thao tác ghi đều cần xác nhận rõ ràng của người dùng. Không coi một trường `confirmed` do model tự tạo là xác nhận.
-- Không sửa trực tiếp thẻ đã phát hành. Không gọi các luồng review, report, clone hoặc personal-card trong phạm vi agent giảng viên.
-- Khi cập nhật hội thoại, thông tin sửa mới nhất của người dùng thay thế thông tin cũ.
+- Khi người dùng xác nhận một thao tác ghi đã được nêu ngay trước đó, gọi lại đúng write tool với đúng payload đã chờ xác nhận; không quay lại list/get tool.
+- Khi cập nhật hội thoại, thông tin sửa mới nhất của người dùng thay thế thông tin cũ. Nếu người dùng hủy, không gọi tool.
