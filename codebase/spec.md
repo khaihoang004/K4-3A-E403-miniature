@@ -1,5 +1,5 @@
 # AI SPEC — Flashcard Tự Động Sau Buổi Học · Nhóm [Miniature] · Zone [5]
-Hướng: [x] A — VLearn  [ ] B — Trợ lý Học viên  [ ] C — Làn mở
+Hướng: [x] A — VLearn  [ ] B — Trợ lý Học viên  [ ] C — Làn mở  
 Loại: [x] Tính năng mới  [ ] Tối ưu tính năng có sẵn
 
 ## §1. User & Job
