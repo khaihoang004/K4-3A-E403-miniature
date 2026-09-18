@@ -9,8 +9,8 @@
 | Họ và Tên | Mã Học Viên | Vai trò chính | Phần việc đảm nhiệm trong dự án |
 |---|---|---|---|
 | Hoàng Trung Khải | 2A202602947 | Backend Developer | Xây dựng backend prototype bằng FastAPI; tích hợp Gemini để tự động tạo flashcard từ bài học; xây dựng các API cho generate, publish, review và report; xử lý validation và cấu trúc dữ liệu flashcard. |
-| Nguyễn Minh Dương | 2A202602920 |  |  |
-| Nguyễn Thu Trang | 2A202602435 |  |  |
+| Nguyễn Minh Dương | 2A202602920 | Prompt Engineer | Kỹ sư Prompt, xây dựng bộ đánh giá (Eval) cho Agent, và thực hiện Demo sản phẩm |
+| Nguyễn Thu Trang | 2A202602435 | Workflow Designer | Thiết kế Workflow, góp phần lập tài liệu AI Spec, khảo sát bài toán thực tế (Evidence mining) cho hệ thống. |
 
 > Nhóm copy nguyên file README này về repo của mình, rồi điền bảng trên. Cột **Phần việc đảm nhiệm** ghi càng cụ thể càng tốt.
 
