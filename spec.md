@@ -1,5 +1,5 @@
 # AI SPEC — Flashcard Tự Động Sau Buổi Học · Nhóm [Miniature] · Zone [5]
-Hướng: [x] A — VLearn  [ ] B — Trợ lý Học viên  [ ] C — Làn mở
+Hướng: [x] A — VLearn  [ ] B — Trợ lý Học viên  [ ] C — Làn mở  
 Loại: [x] Tính năng mới  [ ] Tối ưu tính năng có sẵn
 
 ## §1. User & Job
@@ -9,7 +9,7 @@ Loại: [x] Tính năng mới  [ ] Tối ưu tính năng có sẵn
 - **Core JTBD:** Tự đánh giá và ghi nhớ các kiến thức trọng tâm (khái niệm, công thức, điểm dễ nhầm) sau mỗi buổi học một cách hệ thống mà không tốn thời gian chuẩn bị tài liệu.
 - **Problem statement:** Sau khi kết thúc buổi học, học viên tiếp thu nhiều kiến thức mới nhưng không biết mình cần ôn lại trọng tâm phần nào. Việc tự chép tay, chọn lọc nội dung để làm thẻ ôn tập hoặc tạo câu hỏi trắc nghiệm khiến họ mất quá nhiều thời gian, dễ sinh ra tâm lý lười biếng hoặc bỏ sót các khái niệm cốt lõi, dẫn đến việc chỉ "lướt lại bài" một cách thụ động thay vì "tự kiểm tra" để hiểu sâu.
 - **Evidence (dựa trên nhóm 5-10 người dùng thử ban đầu):**
-  - **Số liệu mining / kết quả khảo sát:** `[n = 10]` học viên, `[XX]%` xác nhận việc tự tạo flashcard thủ công tốn quá nhiều thời gian và khó duy trì thường xuyên; `[XX]%` xác nhận sẵn sàng sử dụng flashcard được trích xuất trực tiếp từ bài học.
+  - **Số liệu mining / kết quả khảo sát:** `[n = 12]` học viên, `[75]%` xác nhận việc tự tạo flashcard thủ công tốn quá nhiều thời gian và khó duy trì thường xuyên; `[50]%` xác nhận sẵn sàng sử dụng flashcard được trích xuất trực tiếp từ bài học, `[25]%` phân vân có thể sẽ thử sử dụng flashcard. 
   - **≥5 quote/ví dụ nguyên văn + nguồn:** *(Điền quote thực tế từ bước "Câu hỏi kiểm chứng")*
     1. *"Học xong buổi nào mình cũng cố ghi lại định nghĩa, nhưng làm flashcard thủ công trên Anki/Quizlet tốn cả tiếng đồng hồ nên vài bữa là nản."* (Học viên A - Phỏng vấn)
     2. *"Lúc đọc lại slide thì thấy hiểu, nhưng gập máy lại là quên. Mình cần cái gì đó để tự test nhanh xem nhớ được bao nhiêu."* (Học viên B - Phỏng vấn)

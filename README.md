@@ -4,11 +4,11 @@
 
 ## 👥 Thành viên nhóm & Phân công vai trò
 
-**Lớp:** 3A · **Phòng:** E403 · **Cụm:** 05 · **Track:** C
+**Lớp:** 3A · **Phòng:** E403 · **Cụm:** 05 · **Track:** A
 
 | Họ và Tên | Mã Học Viên | Vai trò chính | Phần việc đảm nhiệm trong dự án |
 |---|---|---|---|
-| Hoàng Trung Khải | 2A202602947 |  |  |
+| Hoàng Trung Khải | 2A202602947 | Backend Developer | Xây dựng backend prototype bằng FastAPI; tích hợp Gemini để tự động tạo flashcard từ bài học; xây dựng các API cho generate, publish, review và report; xử lý validation và cấu trúc dữ liệu flashcard. |
 | Nguyễn Minh Dương | 2A202602920 |  |  |
 | Nguyễn Thu Trang | 2A202602435 |  |  |
 
