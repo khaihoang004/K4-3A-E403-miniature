@@ -102,6 +102,7 @@ class CloneRequest(BaseModel):
 class PersonalCardUpdate(BaseModel):
     question: str = Field(..., min_length=1)
     answer: str = Field(..., min_length=1)
+    source: Source | None = None
 
 
 class PersonalCardCreate(BaseModel):
@@ -109,6 +110,7 @@ class PersonalCardCreate(BaseModel):
     deck_id: str
     question: str = Field(..., min_length=1)
     answer: str = Field(..., min_length=1)
+    source: Source | None = None
 
 def read_json(path: Path, default):
     if not path.exists():
@@ -593,6 +595,8 @@ def update_personal_flashcard(
             if card["id"] == flashcard_id:
                 card["question"] = req.question
                 card["answer"] = req.answer
+                if req.source:
+                    card["source"] = req.source.model_dump()
 
                 write_json(PERSONAL_FILE, decks)
 
@@ -620,7 +624,7 @@ def create_personal_flashcard(req: PersonalCardCreate):
                 "id": f"personal-fc-{uuid.uuid4().hex[:8]}",
                 "question": req.question,
                 "answer": req.answer,
-                "source": {
+                "source": req.source.model_dump() if req.source else {
                     "page": 1,
                     "text": "Thẻ cá nhân do sinh viên tạo."
                 },
