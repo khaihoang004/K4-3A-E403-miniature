@@ -288,8 +288,8 @@ button.icon-only{padding:8px 10px}
 .front .hint{margin-top:16px; font-size:12.5px; color:var(--muted)}
 .back .a-text{font-size:15.5px; line-height:1.65; color:#111}
 .back .a-text pre{
-  background:var(--ink); color:#EAF2F8; padding:10px 12px; border-radius:7px;
-  font-family:var(--mono); font-size:12.5px; overflow-x:auto;
+  background:var(--ink); color:#EAF2F8; padding:12px 14px; border-radius:7px;
+  font-family:var(--mono); font-size:13.5px; line-height:1.5; overflow-x:auto;
 }
 .back .a-text code{font-family:var(--mono); font-size:.92em}
 .back .src{
@@ -389,29 +389,17 @@ button.icon-only{padding:8px 10px}
           </div>
         </div>
 
-        <label class="field-label">Mã bài học</label>
-        <input id="lessonId" value="demo-lesson">
+        <label class="field-label" for="lessonId">Bài học</label>
+        <select id="lessonId" onchange="loadLessonContent()">
+          <option value="day01">Day 01 · AI &amp; LLM Foundation</option>
+          <option value="day02">Day 02 · Xác định bài toán cho AI</option>
+        </select>
 
-        <label class="field-label">Trọng tâm (phân tách bằng dấu phẩy)</label>
-        <input id="focus" value="Python variables, Python loops">
+        <label class="field-label">Yêu cầu thêm</label>
+        <input id="focus" placeholder="Tự động điền theo bài học">
 
         <label class="field-label">Nội dung bài học</label>
-        <textarea id="lessonContent" class="lesson-input">[Trang 1]
-
-Biến trong Python được tạo ra khi bạn gán một giá trị cho nó. Không cần khai báo kiểu dữ liệu.
-
-[Trang 2]
-
-Vòng lặp for trong Python dùng để lặp qua một chuỗi (như list, tuple, dictionary, set, hoặc string).
-
-Ví dụ:
-
-```python
-fruits = ["apple", "banana", "cherry"]
-
-for x in fruits:
-    print(x)
-```</textarea>
+        <textarea id="lessonContent" class="lesson-input" placeholder="Nội dung bài học sẽ được nạp từ dữ liệu..."></textarea>
 
         <div class="toolbar">
           <button id="generateBtn" onclick="generateCards()">✨ Tạo flashcard bằng AI</button>
@@ -473,6 +461,9 @@ let flashcards=[];
 let currentDeck=null;
 let currentIndex=0;
 let flipped=false;
+let sessionCards=[];
+let missedCards=[];
+let studyRound=1;
 
 /* ---------------- toasts ---------------- */
 function notify(message,type="error"){
@@ -508,6 +499,30 @@ function setMode(mode){
 }
 
 /* ================= INSTRUCTOR ================= */
+
+async function loadLessonContent(){
+  const lessonId=document.getElementById("lessonId").value;
+  const contentField=document.getElementById("lessonContent");
+  const focusField=document.getElementById("focus");
+
+  contentField.value="Đang tải nội dung bài học...";
+  contentField.disabled=true;
+  focusField.value="";
+
+  try{
+    const response=await fetch(`${API}/api/lesson-content/${lessonId}`);
+    const result=await response.json();
+    if(!response.ok) throw new Error(result.detail||"Không tải được nội dung bài học.");
+
+    contentField.value=result.content||"";
+    focusField.value=(result.focus||[]).join(", ");
+  }catch(error){
+    contentField.value="";
+    notify(error.message);
+  }finally{
+    contentField.disabled=false;
+  }
+}
 
 async function generateCards(){
   const btn=document.getElementById("generateBtn");
@@ -569,6 +584,7 @@ function renderCards(){
     `${flashcards.length} flashcard đang ở trạng thái nháp — kiểm tra lại trước khi phát hành.`;
 
   flashcards.forEach((card,index)=>{
+    if(!card.source) card.source = { page: 1, text: "" };
     const el=document.createElement("div");
     el.className="editor-card";
     el.innerHTML=`
@@ -579,15 +595,27 @@ function renderCards(){
 
       <label class="field-label">Câu hỏi</label>
       <input value="${escapeHtml(card.question)}"
-        onchange="flashcards[${index}].question=this.value">
+        placeholder="Nhập câu hỏi ôn tập..."
+        oninput="flashcards[${index}].question=this.value">
 
       <label class="field-label">Câu trả lời</label>
-      <textarea rows="5"
-        onchange="flashcards[${index}].answer=this.value">${escapeHtml(card.answer)}</textarea>
+      <textarea rows="4"
+        placeholder="Nhập câu trả lời ngắn gọn..."
+        oninput="flashcards[${index}].answer=this.value">${escapeHtml(card.answer)}</textarea>
 
       <div class="source-box">
-        <div class="pg">📖 Trang ${card.source?.page ?? 1}</div>
-        <div>${escapeHtml(card.source?.text ?? "")}</div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px">
+          <label style="font-weight:700; color:var(--warm-dark); font-size:12px; margin:0">📖 Nguồn:</label>
+          <div style="display:flex; align-items:center; gap:6px">
+            <span style="font-size:12px; color:var(--muted)">Trang</span>
+            <input type="number" min="1" style="width:65px; padding:3px 6px; font-size:12.5px"
+              value="${card.source?.page ?? 1}"
+              oninput="flashcards[${index}].source.page=parseInt(this.value)||1">
+          </div>
+        </div>
+        <textarea rows="2" style="font-size:12.5px; padding:6px 8px"
+          placeholder="Nhập trích đoạn từ slide / bài giảng làm căn cứ cho thẻ..."
+          oninput="flashcards[${index}].source.text=this.value">${escapeHtml(card.source?.text ?? "")}</textarea>
       </div>
     `;
     container.appendChild(el);
@@ -595,7 +623,8 @@ function renderCards(){
 }
 
 function addCard(){
-  flashcards.push({ id:null, question:"", answer:"", source:{ page:1, text:"" } });
+  const lastPage = flashcards.length > 0 ? (flashcards[flashcards.length-1].source?.page || 1) : 1;
+  flashcards.push({ id:null, question:"", answer:"", source:{ page:lastPage, text:"" } });
   renderCards();
   window.scrollTo({top:document.body.scrollHeight, behavior:"smooth"});
 }
@@ -615,7 +644,8 @@ async function publishCards(){
     const card=flashcards[i];
     if(!card.question.trim()) return notify(`Flashcard #${i+1} chưa có câu hỏi.`);
     if(!card.answer.trim()) return notify(`Flashcard #${i+1} chưa có câu trả lời.`);
-    if(!card.source?.text?.trim()) return notify(`Flashcard #${i+1} chưa có source.`);
+    if(!card.source?.text?.trim()) return notify(`Flashcard #${i+1} chưa có nội dung nguồn trích dẫn.`);
+    if(!card.source?.page || card.source.page < 1) card.source.page = 1;
   }
 
   try{
@@ -740,13 +770,22 @@ async function loadDecks(){
   }
 }
 
-async function startStudy(deckId){
+async function startStudy(deckId, onlyMissed=false){
   try{
-    const response=await fetch(`${API}/api/decks/${deckId}`);
-    const result=await response.json();
-    if(!response.ok) throw new Error(result.detail);
+    if(!onlyMissed){
+      const response=await fetch(`${API}/api/decks/${deckId}`);
+      const result=await response.json();
+      if(!response.ok) throw new Error(result.detail);
 
-    currentDeck=result.data;
+      currentDeck=result.data;
+      sessionCards=[...currentDeck.flashcards];
+      missedCards=[];
+      studyRound=1;
+    }else{
+      sessionCards=[...missedCards];
+      missedCards=[];
+      studyRound++;
+    }
     currentIndex=0;
     flipped=false;
     renderStudy();
@@ -758,14 +797,15 @@ async function startStudy(deckId){
 
 function renderStudy(){
   const container=document.getElementById("studentContent");
-  const card=currentDeck.flashcards[currentIndex];
-  const total=currentDeck.flashcards.length;
+  const card=sessionCards[currentIndex];
+  const total=sessionCards.length;
   const pct=Math.round(((currentIndex+ (flipped?1:0.5))/total)*100);
+  const roundBadge = studyRound > 1 ? `<span class="badge" style="background:var(--accent);margin-left:6px">Vòng ôn #${studyRound}</span>` : "";
 
   container.innerHTML=`
     <div class="study-wrap">
       <div class="study-progress">
-        <div class="count">Thẻ ${currentIndex+1} / ${total}</div>
+        <div class="count">Thẻ ${currentIndex+1} / ${total} ${roundBadge}</div>
         <div class="track"><div class="fill" style="width:${pct}%"></div></div>
       </div>
 
@@ -776,7 +816,7 @@ function renderStudy(){
           <div class="flip-face front">
             <div class="face-tag q">CÂU HỎI</div>
             <div class="q-text">${escapeHtml(card.question)}</div>
-            <div class="hint">Nhấp để xem đáp án</div>
+            <div class="hint">Nhấp hoặc bấm Space để xem đáp án</div>
           </div>
           <div class="flip-face back">
             <div class="face-tag">ĐÁP ÁN</div>
@@ -789,9 +829,9 @@ function renderStudy(){
       <div class="study-controls">
         <div class="row" id="reviewRow">
           ${flipped ? `
-            <button class="danger" style="border:1.5px solid var(--danger); flex:1" onclick="review('not_remembered')">Chưa nhớ</button>
-            <button class="success" onclick="review('remembered')">Đã nhớ</button>
-          ` : `<button class="ghost" onclick="flipCard()">Lật thẻ để xem đáp án</button>`}
+            <button class="danger" style="border:1.5px solid var(--danger); flex:1" onclick="review('not_remembered')">[1] Chưa nhớ</button>
+            <button class="success" style="flex:1" onclick="review('remembered')">[2] Đã nhớ</button>
+          ` : `<button class="ghost" onclick="flipCard()">Lật thẻ để xem đáp án (Space)</button>`}
         </div>
 
         <div class="row">
@@ -800,7 +840,7 @@ function renderStudy(){
           <button class="warm" onclick="showReportForm()">Báo lỗi</button>
         </div>
 
-        <div class="kbd-hint"><kbd>Space</kbd> lật thẻ · <kbd>←</kbd> <kbd>→</kbd> chuyển thẻ</div>
+        <div class="kbd-hint"><kbd>Space</kbd> lật thẻ · <kbd>1</kbd> Chưa nhớ · <kbd>2</kbd> Đã nhớ · <kbd>←</kbd> <kbd>→</kbd> chuyển thẻ</div>
 
         <div id="reportForm"></div>
 
@@ -817,8 +857,14 @@ function flipCard(){
 
 async function review(result){
   const studentId=document.getElementById("studentId").value;
+  const currentCard = sessionCards[currentIndex];
+  if(result === "not_remembered"){
+    if(!missedCards.some(c => c.id === currentCard.id)){
+      missedCards.push(currentCard);
+    }
+  }
   try{
-    await fetch(`${API}/api/flashcards/${currentDeck.flashcards[currentIndex].id}/review`,{
+    await fetch(`${API}/api/flashcards/${currentCard.id}/review`,{
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({ student_id:studentId, result })
@@ -830,13 +876,53 @@ async function review(result){
 }
 
 function nextCard(){
-  if(currentIndex<currentDeck.flashcards.length-1){
+  if(currentIndex < sessionCards.length - 1){
     currentIndex++;
     flipped=false;
     renderStudy();
   }else{
-    notify("Bạn đã hoàn thành bộ flashcard!","success");
-    loadProgress();
+    finishStudySession();
+  }
+}
+
+function finishStudySession(){
+  const container=document.getElementById("studentContent");
+  const totalCards = sessionCards.length;
+  const missedCount = missedCards.length;
+  const rememberedCount = totalCards - missedCount;
+
+  if(missedCount > 0){
+    container.innerHTML=`
+      <div class="study-wrap" style="text-align:center; max-width:480px; margin:20px auto">
+        <div style="font-size:48px; margin-bottom:12px">🎯</div>
+        <h2>Hoàn thành lượt học #${studyRound}!</h2>
+        <p style="color:var(--ink-soft); margin:12px 0 20px; line-height:1.6">
+          Bạn đã nhớ <strong>${rememberedCount}/${totalCards}</strong> thẻ.<br>
+          Còn <strong>${missedCount}</strong> thẻ bạn đánh dấu <span style="color:var(--danger);font-weight:600">Chưa nhớ</span>.
+        </p>
+        <div class="toolbar" style="justify-content:center; gap:12px">
+          <button class="warm" onclick="startStudy('${currentDeck.deck_id}', true)">🔁 Ôn lại ${missedCount} thẻ chưa nhớ ngay</button>
+          <button class="ghost" onclick="loadProgress()">📊 Xem thống kê tiến độ</button>
+          <button class="ghost" onclick="loadDecks()">← Về danh sách</button>
+        </div>
+      </div>
+    `;
+    notify(`Còn ${missedCount} thẻ chưa nhớ cần ôn lại.`, "warning");
+  } else {
+    container.innerHTML=`
+      <div class="study-wrap" style="text-align:center; max-width:480px; margin:20px auto">
+        <div style="font-size:48px; margin-bottom:12px">🌟</div>
+        <h2>Xuất sắc! Bạn đã nhớ toàn bộ thẻ!</h2>
+        <p style="color:var(--ink-soft); margin:12px 0 20px; line-height:1.6">
+          Tất cả các thẻ trong bộ <strong>${escapeHtml(currentDeck.title)}</strong> đã được ôn tập và ghi nhớ hoàn tất.
+        </p>
+        <div class="toolbar" style="justify-content:center; gap:12px">
+          <button class="success" onclick="loadProgress()">📊 Xem thống kê tiến độ</button>
+          <button class="ghost" onclick="loadDecks()">← Về danh sách thẻ</button>
+        </div>
+      </div>
+    `;
+    notify("Chúc mừng bạn đã ghi nhớ 100% flashcard!", "success");
   }
 }
 
@@ -852,6 +938,8 @@ document.addEventListener("keydown",(e)=>{
   if(!currentDeck || document.getElementById("studentView").classList.contains("hidden")) return;
   if(!document.getElementById("flipCard")) return;
   if(e.code==="Space"){ e.preventDefault(); flipCard(); }
+  else if(flipped && (e.key==="1" || e.code==="Digit1" || e.code==="Numpad1")){ review("not_remembered"); }
+  else if(flipped && (e.key==="2" || e.code==="Digit2" || e.code==="Numpad2")){ review("remembered"); }
   else if(e.code==="ArrowRight"){ nextCard(); }
   else if(e.code==="ArrowLeft"){ previousCard(); }
 });
@@ -1003,6 +1091,7 @@ function renderPersonalCards(deck){
   }
 
   deck.flashcards.forEach((card,index)=>{
+    if(!card.source) card.source = { page: 1, text: "Ghi chú cá nhân của học viên." };
     const el=document.createElement("div");
     el.className="editor-card";
     el.innerHTML=`
@@ -1013,8 +1102,22 @@ function renderPersonalCards(deck){
       <label class="field-label">Câu hỏi</label>
       <input id="q-${card.id}" value="${escapeHtml(card.question)}">
       <label class="field-label">Câu trả lời</label>
-      <textarea id="a-${card.id}" rows="4">${escapeHtml(card.answer)}</textarea>
-      <div class="toolbar"><button onclick="savePersonalCard('${card.id}')">Lưu</button></div>
+      <textarea id="a-${card.id}" rows="3">${escapeHtml(card.answer)}</textarea>
+
+      <div class="source-box">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px">
+          <label style="font-weight:700; color:var(--warm-dark); font-size:12px; margin:0">📖 Nguồn:</label>
+          <div style="display:flex; align-items:center; gap:6px">
+            <span style="font-size:12px; color:var(--muted)">Trang</span>
+            <input type="number" min="1" id="src-pg-${card.id}" style="width:65px; padding:3px 6px; font-size:12.5px"
+              value="${card.source?.page ?? 1}">
+          </div>
+        </div>
+        <textarea id="src-txt-${card.id}" rows="2" style="font-size:12.5px; padding:6px 8px"
+          placeholder="Trích đoạn tài liệu hoặc ghi chú nguồn...">${escapeHtml(card.source?.text ?? "")}</textarea>
+      </div>
+
+      <div class="toolbar" style="margin-top:10px"><button onclick="savePersonalCard('${card.id}')">Lưu thay đổi</button></div>
     `;
     container.appendChild(el);
   });
@@ -1023,6 +1126,10 @@ function renderPersonalCards(deck){
 async function savePersonalCard(cardId){
   const question=document.getElementById(`q-${cardId}`).value;
   const answer=document.getElementById(`a-${cardId}`).value;
+  const pageEl=document.getElementById(`src-pg-${cardId}`);
+  const textEl=document.getElementById(`src-txt-${cardId}`);
+  const page=pageEl ? (parseInt(pageEl.value) || 1) : 1;
+  const text=textEl ? (textEl.value.trim() || "Ghi chú cá nhân của học viên.") : "Ghi chú cá nhân của học viên.";
 
   if(!question.trim() || !answer.trim()){
     notify("Câu hỏi và câu trả lời không được để trống.");
@@ -1033,11 +1140,15 @@ async function savePersonalCard(cardId){
     const response=await fetch(`${API}/api/personal-flashcards/${cardId}`,{
       method:"PUT",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({ question, answer })
+      body:JSON.stringify({ 
+        question, 
+        answer, 
+        source: { page, text }
+      })
     });
     const result=await response.json();
     if(!response.ok) throw new Error(result.detail);
-    notify("Đã lưu thay đổi.","success");
+    notify("Đã lưu thay đổi flashcard cá nhân.","success");
   }catch(error){
     notify(error.message);
   }
@@ -1061,6 +1172,9 @@ async function addPersonalCard(deckId){
   if(!question?.trim()) return;
   const answer=prompt("Nhập câu trả lời:");
   if(!answer?.trim()) return;
+  const sourceText=prompt("Nhập trích đoạn nguồn / ghi chú bài học:", "Ghi chú cá nhân của học viên") || "Ghi chú cá nhân của học viên";
+  const pageStr=prompt("Nhập số trang tài liệu:", "1") || "1";
+  const page=parseInt(pageStr) || 1;
 
   const studentId=document.getElementById("studentId").value;
 
@@ -1068,17 +1182,24 @@ async function addPersonalCard(deckId){
     const response=await fetch(`${API}/api/personal-flashcards`,{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({ student_id:studentId, deck_id:deckId, question, answer })
+      body:JSON.stringify({ 
+        student_id:studentId, 
+        deck_id:deckId, 
+        question, 
+        answer,
+        source: { page, text: sourceText }
+      })
     });
     const result=await response.json();
     if(!response.ok) throw new Error(result.detail);
-    notify("Đã thêm flashcard.","success");
+    notify("Đã thêm flashcard cá nhân.","success");
     openPersonalDeck(deckId);
   }catch(error){
     notify(error.message);
   }
 }
 
+loadLessonContent();
 renderCards();
 </script>
 </body>

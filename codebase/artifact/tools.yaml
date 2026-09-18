@@ -1,0 +1,113 @@
+[
+  {
+    "name": "list_lessons",
+    "description": "List lessons available for lecturer flashcard authoring. Use query only when the lecturer provides a title or ID fragment.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {"type": "string", "description": "Optional lesson title or ID search text."}
+      }
+    }
+  },
+  {
+    "name": "get_lesson",
+    "description": "Retrieve one lesson and its page-aware source content by exact lesson ID.",
+    "parameters": {
+      "type": "object",
+      "properties": {"lesson_id": {"type": "string", "minLength": 1}},
+      "required": ["lesson_id"]
+    }
+  },
+  {
+    "name": "create_lesson",
+    "description": "Create a lesson for flashcard authoring. Requires confirmation before execution. Content must be a non-empty list of pages with page number and text.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "lesson_id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "content": {"type": "array", "minItems": 1, "items": {"type": "object", "properties": {"page": {"type": "integer", "minimum": 1}, "text": {"type": "string", "minLength": 1}}, "required": ["page", "text"]}}
+      },
+      "required": ["lesson_id", "title", "content"]
+    }
+  },
+  {
+    "name": "update_lesson",
+    "description": "Update a lesson title and/or page-aware content by exact lesson ID. Requires confirmation before execution.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "lesson_id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "content": {"type": "array", "minItems": 1, "items": {"type": "object", "properties": {"page": {"type": "integer", "minimum": 1}, "text": {"type": "string", "minLength": 1}}, "required": ["page", "text"]}}
+      },
+      "required": ["lesson_id"]
+    }
+  },
+  {
+    "name": "delete_lesson",
+    "description": "Delete a lesson by exact lesson ID. Requires explicit confirmation before execution.",
+    "parameters": {
+      "type": "object",
+      "properties": {"lesson_id": {"type": "string", "minLength": 1}},
+      "required": ["lesson_id"]
+    }
+  },
+  {
+    "name": "list_flashcards",
+    "description": "List draft flashcards, optionally filtered by exact lesson ID.",
+    "parameters": {
+      "type": "object",
+      "properties": {"lesson_id": {"type": "string", "minLength": 1}}
+    }
+  },
+  {
+    "name": "create_flashcard",
+    "description": "Save one grounded draft flashcard for an existing lesson. Requires confirmation before execution.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "lesson_id": {"type": "string", "minLength": 1},
+        "question": {"type": "string", "minLength": 1},
+        "answer": {"type": "string", "minLength": 1},
+        "source": {"type": "object", "properties": {"page": {"type": "integer", "minimum": 1}, "text": {"type": "string", "minLength": 1}}, "required": ["page", "text"]}
+      },
+      "required": ["lesson_id", "question", "answer", "source"]
+    }
+  },
+  {
+    "name": "update_flashcard",
+    "description": "Update a draft flashcard question, answer, or source by exact flashcard ID. Requires confirmation before execution.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "flashcard_id": {"type": "string", "minLength": 1},
+        "question": {"type": "string", "minLength": 1},
+        "answer": {"type": "string", "minLength": 1},
+        "source": {"type": "object", "properties": {"page": {"type": "integer", "minimum": 1}, "text": {"type": "string", "minLength": 1}}, "required": ["page", "text"]}
+      },
+      "required": ["flashcard_id"]
+    }
+  },
+  {
+    "name": "delete_flashcard",
+    "description": "Delete a draft flashcard by exact flashcard ID. Requires confirmation before execution.",
+    "parameters": {
+      "type": "object",
+      "properties": {"flashcard_id": {"type": "string", "minLength": 1}},
+      "required": ["flashcard_id"]
+    }
+  },
+  {
+    "name": "publish_flashcard_deck",
+    "description": "Publish all saved draft flashcards for a lesson as a learner-visible deck. Requires confirmation before execution.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "lesson_id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1}
+      },
+      "required": ["lesson_id"]
+    }
+  }
+]

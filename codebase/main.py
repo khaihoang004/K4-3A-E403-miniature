@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from dotenv import load_dotenv
 from codebase.provider.gemini_provider import GeminiProvider
+from codebase.agent_tools import ToolRegistry, load_tool_schemas
 
 load_dotenv()
 
@@ -29,12 +30,14 @@ gemini = GeminiProvider(fallback_models=["gemini-3.1-flash-lite"])
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 PROMPT_FILE = BASE_DIR / "codebase" / "artifact" / "system_prompt.md"
+TOOLS_FILE = BASE_DIR / "codebase" / "artifact" / "tools.yaml"
 DATA_DIR = BASE_DIR / "data"
 
 PUBLISHED_FILE = DATA_DIR / "published_decks.json"
 PERSONAL_FILE = DATA_DIR / "personal_decks.json"
 LOG_FILE = DATA_DIR / "learning_logs.json"
 REPORT_FILE = DATA_DIR / "reports.json"
+agent_tools = ToolRegistry(BASE_DIR)
 
 
 class Source(BaseModel):
@@ -62,6 +65,19 @@ class GenerateResponse(BaseModel):
     message: str | None = None
 
 
+class AgentRequest(BaseModel):
+    query: str = Field(..., min_length=1)
+    history: list[dict[str, str]] = []
+    confirmed: bool = False
+
+
+class AgentResponse(BaseModel):
+    success: bool
+    message: str | None = None
+    tool_calls: list[dict] = []
+    pending_confirmation: list[dict] = []
+
+
 class PublishRequest(BaseModel):
     lesson_id: str
     title: str = "Flashcard Deck"
@@ -86,6 +102,7 @@ class CloneRequest(BaseModel):
 class PersonalCardUpdate(BaseModel):
     question: str = Field(..., min_length=1)
     answer: str = Field(..., min_length=1)
+    source: Source | None = None
 
 
 class PersonalCardCreate(BaseModel):
@@ -93,6 +110,7 @@ class PersonalCardCreate(BaseModel):
     deck_id: str
     question: str = Field(..., min_length=1)
     answer: str = Field(..., min_length=1)
+    source: Source | None = None
 
 def read_json(path: Path, default):
     if not path.exists():
@@ -162,6 +180,105 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/lesson-content/{lesson_id}")
+def get_lesson_content(lesson_id: str):
+    lesson_files = {
+        "day01": BASE_DIR / "data" / "d1-slide-hackathon.json",
+        "day02": BASE_DIR / "data" / "d2-slide-hackathon.json",
+    }
+    lesson_file = lesson_files.get(lesson_id.lower())
+    if not lesson_file:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bài học.")
+
+    slides = read_json(lesson_file, [])
+    if not slides:
+        raise HTTPException(status_code=404, detail="Bài học chưa có nội dung.")
+
+    content_parts = []
+    concepts = []
+    for slide in slides:
+        page = slide.get("page")
+        content = str(slide.get("content", "")).strip()
+        if page and content:
+            content_parts.append(f"[Trang {page}]\n\n{content}")
+        concepts.extend(slide.get("concepts", []))
+
+    return {
+        "success": True,
+        "lesson_id": lesson_id.lower(),
+        "title": slides[0].get("title", lesson_id),
+        "content": "\n\n".join(content_parts),
+        "focus": list(dict.fromkeys(concepts)),
+        "slide_count": len(slides),
+    }
+
+
+@app.post("/api/agent", response_model=AgentResponse)
+def run_agent(req: AgentRequest):
+    try:
+        tools = load_tool_schemas(TOOLS_FILE)
+        messages = [{"role": "system", "content": load_system_prompt()}]
+        messages.extend(req.history)
+        messages.append({"role": "user", "content": req.query})
+        trace = []
+        pending = []
+
+        for _ in range(4):
+            response = gemini.complete(messages=messages, tools=tools, temperature=0.1)
+            if not response.tool_calls:
+                return AgentResponse(
+                    success=True,
+                    message=response.text or "Đã xử lý yêu cầu.",
+                    tool_calls=trace,
+                    pending_confirmation=pending,
+                )
+
+            tool_results = []
+            messages.append({
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                    {
+                        "name": call.name,
+                        "args": call.args,
+                        "thought_signature": call.thought_signature,
+                    }
+                    for call in response.tool_calls
+                ],
+            })
+            for call in response.tool_calls:
+                result = agent_tools.execute(call.name, call.args, confirmed=req.confirmed)
+                trace.append({"id": call.id, "name": call.name, "args": call.args, "result": result})
+                if result.get("pending_confirmation"):
+                    pending.append({"name": call.name, "args": call.args})
+                tool_results.append({"tool_call_id": call.id, "name": call.name, "result": result})
+
+            if pending:
+                return AgentResponse(
+                    success=True,
+                    message="Cần xác nhận trước khi thực hiện thao tác ghi.",
+                    tool_calls=trace,
+                    pending_confirmation=pending,
+                )
+
+            for tool_result in tool_results:
+                messages.append({
+                    "role": "tool",
+                    "name": tool_result["name"],
+                    "tool_call_id": tool_result["tool_call_id"],
+                    "content": json.dumps(tool_result["result"], ensure_ascii=False),
+                })
+
+        raise HTTPException(status_code=502, detail="Agent vượt quá số vòng gọi tool cho phép.")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Agent execution failed")
+        if "GEMINI_API_KEY" in str(exc) or "API key" in str(exc):
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail=f"{type(exc).__name__}: {exc}") from exc
+
+
 @app.post("/api/generate_flashcards", response_model=GenerateResponse)
 def generate_flashcards(req: GenerateRequest):
     if not req.content.strip():
@@ -228,6 +345,8 @@ def generate_flashcards(req: GenerateRequest):
         raise
     except Exception as exc:
         logger.exception("Generate flashcards failed")
+        if "GEMINI_API_KEY" in str(exc) or "API key" in str(exc):
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
         raise HTTPException(
             status_code=500,
             detail=f"{type(exc).__name__}: {exc}",
@@ -476,6 +595,8 @@ def update_personal_flashcard(
             if card["id"] == flashcard_id:
                 card["question"] = req.question
                 card["answer"] = req.answer
+                if req.source:
+                    card["source"] = req.source.model_dump()
 
                 write_json(PERSONAL_FILE, decks)
 
@@ -503,7 +624,7 @@ def create_personal_flashcard(req: PersonalCardCreate):
                 "id": f"personal-fc-{uuid.uuid4().hex[:8]}",
                 "question": req.question,
                 "answer": req.answer,
-                "source": {
+                "source": req.source.model_dump() if req.source else {
                     "page": 1,
                     "text": "Thẻ cá nhân do sinh viên tạo."
                 },

@@ -37,7 +37,21 @@ def _to_gemini_contents(messages: list[dict[str, str]]) -> tuple[str | None, lis
         if role == "system":
             system_parts.append(content)
         elif role == "assistant":
-            contents.append({"role": "model", "parts": [{"text": content}]})
+            parts: list[dict[str, Any]] = []
+            if content:
+                parts.append({"text": content})
+            for tool_call in msg.get("tool_calls", []):
+                function_call = {
+                    "name": tool_call["name"],
+                    "args": tool_call.get("args", {}),
+                }
+                if tool_call.get("thought_signature") is not None:
+                    function_call["thought_signature"] = tool_call["thought_signature"]
+                parts.append({
+                    "functionCall": function_call,
+                })
+            if parts:
+                contents.append({"role": "model", "parts": parts})
         elif role == "user":
             contents.append({"role": "user", "parts": [{"text": content}]})
         elif role == "tool":
@@ -105,6 +119,14 @@ def _function_call_id(call: Any) -> str | None:
     return None
 
 
+def _part_thought_signature(part: Any) -> Any | None:
+    if hasattr(part, "thought_signature"):
+        return getattr(part, "thought_signature")
+    if isinstance(part, dict):
+        return part.get("thought_signature")
+    return None
+
+
 class GeminiProvider:
     """Google Gemini API provider with normalized tool_calls and built-in Fallback/Cooldown."""
 
@@ -161,6 +183,14 @@ class GeminiProvider:
             config_kwargs["system_instruction"] = system_instruction
         if declarations:
             config_kwargs["tools"] = [types.Tool(function_declarations=declarations)]
+            if tool_choice in {"required", "any"}:
+                config_kwargs["tool_config"] = types.ToolConfig(
+                    function_calling_config=types.FunctionCallingConfig(mode="ANY")
+                )
+            elif tool_choice in {"none", "disabled"}:
+                config_kwargs["tool_config"] = types.ToolConfig(
+                    function_calling_config=types.FunctionCallingConfig(mode="NONE")
+                )
 
         client = genai.Client(api_key=api_key)
 
@@ -186,14 +216,15 @@ class GeminiProvider:
                 text_parts: list[str] = []
                 calls: list[ToolCall] = []
 
-                def append_call(function_call: Any) -> None:
+                def append_call(function_call: Any, part: Any = None) -> None:
                     name = _function_call_name(function_call)
                     if name:
                         call_id = _function_call_id(function_call) or f"call_{uuid.uuid4().hex[:8]}"
                         calls.append(ToolCall(
                             id=call_id, 
-                            name=name, 
-                            args=_function_call_args(function_call)
+                            name=name,
+                            args=_function_call_args(function_call),
+                            thought_signature=_part_thought_signature(part),
                         ))
 
                 for candidate in getattr(resp, "candidates", []) or []:
@@ -204,7 +235,7 @@ class GeminiProvider:
                             text_parts.append(text)
                         function_call = _part_function_call(part)
                         if function_call:
-                            append_call(function_call)
+                            append_call(function_call, part)
 
                 for function_call in getattr(resp, "function_calls", []) or []:
                     append_call(function_call)
@@ -225,6 +256,10 @@ class GeminiProvider:
                 )
 
             except Exception as exc:
+                if "API_KEY_INVALID" in str(exc) or "API key not valid" in str(exc):
+                    raise RuntimeError(
+                        "GEMINI_API_KEY không hợp lệ. Hãy cập nhật key Google Gemini hợp lệ trong file .env."
+                    ) from exc
                 if self._is_rate_limit_error(exc):
                     self._cooldowns[current_model] = time.time() + self.cooldown_seconds
                     logger.warning(

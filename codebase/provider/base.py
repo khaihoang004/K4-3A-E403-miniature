@@ -9,6 +9,7 @@ class ToolCall:
     id: str
     name: str
     args: dict[str, Any]
+    thought_signature: Any | None = None
 
 
 @dataclass

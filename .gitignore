@@ -12,6 +12,7 @@ __pycache__/
 
 # Data
 data/
+runs/
 
 # OS / editor
 .DS_Store
